@@ -1,11 +1,13 @@
 @echo off
-chcp 65001 >nul
-title Sonicall: AI Music & Cover Studio
+setlocal
+cd /d "%~dp0"
+
+title Sonicall: AI Music and Cover Studio
 color 0E
 
 echo ========================================================
-echo   Sonicall: AI Music & Cover Studio (Trunçgil Teknoloji)
-echo   YuE2 (3B INT8 ConvRot) & SheetSage2 Melody Engine
+echo   Sonicall: AI Music and Cover Studio (Truncgil Teknoloji)
+echo   YuE2 (3B INT8 ConvRot) and SheetSage2 Melody Engine
 echo ========================================================
 echo.
 
@@ -17,7 +19,7 @@ start "Sonicall AI Engine" /min python backend/server.py
 timeout /t 2 /nobreak >nul
 
 :: 3. Launch Flutter Desktop
-echo [2/2] Sonicall Masaustu Stüdyosu aciliyor...
+echo [2/2] Sonicall Masaustu Studyosu aciliyor...
 flutter run -d windows
 
 pause
