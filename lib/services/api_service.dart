@@ -26,6 +26,9 @@ class ApiService {
         (data) {
           try {
             final jsonMap = jsonDecode(data);
+            if (jsonMap is Map && jsonMap['type'] == 'ping') {
+              return;
+            }
             final event = GenerationProgressEvent.fromJson(jsonMap);
             _progressController.add(event);
           } catch (e) {
@@ -100,6 +103,26 @@ class ApiService {
     } catch (_) {
       return false;
     }
+  }
+
+  Future<Map<String, dynamic>?> fetchTaskById(String taskId) async {
+    try {
+      final res = await http.get(Uri.parse('$baseUrl/api/tasks/$taskId')).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        return jsonDecode(utf8.decode(res.bodyBytes));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<Map<String, dynamic>> fetchAllTasks() async {
+    try {
+      final res = await http.get(Uri.parse('$baseUrl/api/tasks')).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        return jsonDecode(utf8.decode(res.bodyBytes));
+      }
+    } catch (_) {}
+    return {};
   }
 
   Future<bool> importLocalModel(String modelId, String filePath) async {
@@ -265,6 +288,49 @@ class ApiService {
       request.files.add(await http.MultipartFile.fromPath('file', file.path));
       final streamedResponse = await request.send();
       final res = await http.Response.fromStream(streamedResponse);
+      if (res.statusCode == 200) {
+        return jsonDecode(utf8.decode(res.bodyBytes));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> analyzeAudio(String filePath) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/api/audio/analyze'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'file_path': filePath}),
+      );
+      if (res.statusCode == 200) {
+        return jsonDecode(utf8.decode(res.bodyBytes));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<bool> startMicRecording() async {
+    try {
+      final res = await http.post(Uri.parse('$baseUrl/api/record/start'));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> stopMicRecording() async {
+    try {
+      final res = await http.post(Uri.parse('$baseUrl/api/record/stop'));
+      if (res.statusCode == 200) {
+        return jsonDecode(utf8.decode(res.bodyBytes));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> getMicRecordingStatus() async {
+    try {
+      final res = await http.get(Uri.parse('$baseUrl/api/record/status'));
       if (res.statusCode == 200) {
         return jsonDecode(utf8.decode(res.bodyBytes));
       }

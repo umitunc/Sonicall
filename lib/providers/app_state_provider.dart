@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
+import '../models/instrument_model.dart';
 import '../services/api_service.dart';
 import '../services/audio_player_service.dart';
 import '../services/style_service.dart';
@@ -88,15 +89,139 @@ class AppStateProvider extends ChangeNotifier {
   int get variety => _variety;
   bool get isMoreOptionsOpen => _isMoreOptionsOpen;
 
+  // Instrument Transform State
+  InstrumentModel _selectedInstrument = InstrumentCatalog.getDefault();
+  String? _instrumentRefAudioPath;
+  String? _instrumentRefAudioName;
+  double _instrumentAudioDuration = 30.0;
+  int _instrumentBpm = 120;
+  int? _detectedBpm;
+  bool _isDetectingBpm = false;
+  bool _isRecordingMic = false;
+  double _micRecordElapsedSec = 0.0;
+  Timer? _micRecordTimer;
+  String _instrumentTitle = '';
+  bool _isCustomInstrumentTitle = false;
+  String _instrumentPrompt = '';
+  String _instrumentNegativePrompt = '';
+  bool _pureSoloIsolation = true;
+
+  InstrumentModel get selectedInstrument => _selectedInstrument;
+  String? get instrumentRefAudioPath => _instrumentRefAudioPath;
+  String? get instrumentRefAudioName => _instrumentRefAudioName;
+  double get instrumentAudioDuration => _instrumentAudioDuration;
+  int get instrumentBpm => _instrumentBpm;
+  int? get detectedBpm => _detectedBpm;
+  bool get isDetectingBpm => _isDetectingBpm;
+  bool get isRecordingMic => _isRecordingMic;
+  double get micRecordElapsedSec => _micRecordElapsedSec;
+  String get instrumentTitle {
+    if (_isCustomInstrumentTitle && _instrumentTitle.trim().isNotEmpty) {
+      return _instrumentTitle.trim();
+    }
+    final instShort = _selectedInstrument.name.split('(').first.trim();
+    if (_instrumentRefAudioName != null && _instrumentRefAudioName!.isNotEmpty) {
+      final base = _instrumentRefAudioName!.split('.').first;
+      return '$base - $instShort Solo';
+    }
+    return '';
+  }
+  String get instrumentPrompt =>
+      _instrumentPrompt.isNotEmpty ? _instrumentPrompt : _selectedInstrument.promptStyle;
+  String get instrumentNegativePrompt =>
+      _instrumentNegativePrompt.isNotEmpty ? _instrumentNegativePrompt : _selectedInstrument.negativeStyle;
+  bool get pureSoloIsolation => _pureSoloIsolation;
+
   // Generation status
   // Multi-task generation queue & new songs
   final List<GenerationTask> _activeTasks = [];
   final Set<String> _newSongIds = {};
+  Timer? _taskPollTimer;
 
   List<GenerationTask> get activeTasks => List.unmodifiable(_activeTasks);
   bool get isGenerating => _activeTasks.isNotEmpty;
   int get generationProgress => _activeTasks.isEmpty ? 0 : _activeTasks.first.progress;
   String get generationMessage => _activeTasks.isEmpty ? '' : _activeTasks.first.message;
+
+  void cancelTask(String taskId) {
+    _activeTasks.removeWhere((t) => t.taskId == taskId);
+    if (_activeTasks.isEmpty) {
+      _taskPollTimer?.cancel();
+      _taskPollTimer = null;
+    }
+    notifyListeners();
+  }
+
+  void clearStuckTasks() {
+    _activeTasks.clear();
+    _taskPollTimer?.cancel();
+    _taskPollTimer = null;
+    notifyListeners();
+  }
+
+  void _ensureTaskPollTimer() {
+    if (_taskPollTimer != null && _taskPollTimer!.isActive) return;
+    _taskPollTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+      if (_activeTasks.isEmpty) {
+        timer.cancel();
+        _taskPollTimer = null;
+        return;
+      }
+      await _checkAndReconcileTasks();
+    });
+  }
+
+  Future<void> _checkAndReconcileTasks() async {
+    try {
+      final latestSongs = await api.fetchSongs();
+      if (latestSongs.isNotEmpty) {
+        _songs = latestSongs;
+        StyleService.instance.syncFromSongs(_songs);
+      }
+
+      final serverTasks = await api.fetchAllTasks();
+      final toRemove = <GenerationTask>[];
+
+      for (final task in _activeTasks) {
+        // 1. Check if song already exists in database
+        final foundSong = _songs.where((s) => s.id == task.taskId || (task.title.isNotEmpty && s.title.trim() == task.title.trim())).firstOrNull;
+        if (foundSong != null) {
+          toRemove.add(task);
+          _newSongIds.add(foundSong.id);
+          continue;
+        }
+
+        // 2. Check task status from server API
+        if (serverTasks.containsKey(task.taskId)) {
+          final sInfo = serverTasks[task.taskId];
+          if (sInfo is Map) {
+            final st = sInfo['status'];
+            final prog = sInfo['progress'] is num ? (sInfo['progress'] as num).toInt() : task.progress;
+            final msg = sInfo['message'] ?? task.message;
+
+            task.progress = prog;
+            task.message = msg;
+            task.status = st ?? task.status;
+
+            if (st == 'completed') {
+              toRemove.add(task);
+            } else if (st == 'error') {
+              task.status = 'error';
+            }
+          }
+        }
+      }
+
+      if (toRemove.isNotEmpty) {
+        _activeTasks.removeWhere((t) => toRemove.contains(t));
+        if (_activeTasks.isEmpty) {
+          _taskPollTimer?.cancel();
+          _taskPollTimer = null;
+        }
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
 
   bool isSongNew(String songId) => _newSongIds.contains(songId);
   void markSongRead(String songId) {
@@ -361,6 +486,197 @@ class AppStateProvider extends ChangeNotifier {
     }
   }
 
+  // ==========================================
+  // Instrument Transform Methods
+  // ==========================================
+
+  void setInstrument(InstrumentModel inst) {
+    _selectedInstrument = inst;
+    _instrumentPrompt = inst.promptStyle;
+    _instrumentNegativePrompt = inst.negativeStyle;
+    _updateInstrumentAutoTitle();
+    notifyListeners();
+  }
+
+  void setInstrumentPrompt(String val) {
+    _instrumentPrompt = val;
+    notifyListeners();
+  }
+
+  void setInstrumentNegativePrompt(String val) {
+    _instrumentNegativePrompt = val;
+    notifyListeners();
+  }
+
+  void resetInstrumentPromptsToDefault() {
+    _instrumentPrompt = _selectedInstrument.promptStyle;
+    _instrumentNegativePrompt = _selectedInstrument.negativeStyle;
+    notifyListeners();
+  }
+
+  void setInstrumentBpm(int bpm) {
+    _instrumentBpm = bpm;
+    notifyListeners();
+  }
+
+  void setInstrumentTitle(String title) {
+    _instrumentTitle = title;
+    _isCustomInstrumentTitle = title.trim().isNotEmpty;
+    notifyListeners();
+  }
+
+  void _updateInstrumentAutoTitle() {
+    if (_isCustomInstrumentTitle) return;
+    _instrumentTitle = '';
+  }
+
+  void clearInstrumentAudio() {
+    _instrumentRefAudioPath = null;
+    _instrumentRefAudioName = null;
+    _instrumentAudioDuration = 30.0;
+    _detectedBpm = null;
+    _instrumentBpm = 120;
+    _isCustomInstrumentTitle = false;
+    _instrumentTitle = '';
+    notifyListeners();
+  }
+
+  Future<void> pickInstrumentAudioFile() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['mp3', 'wav', 'ogg', 'm4a', 'flac'],
+    );
+
+    if (result.isNotEmpty && result.first.path != null) {
+      _isDetectingBpm = true;
+      notifyListeners();
+
+      final file = File(result.first.path!);
+      final uploadRes = await api.uploadAudio(file);
+
+      _isDetectingBpm = false;
+      if (uploadRes != null && uploadRes['success'] == true) {
+        _instrumentRefAudioPath = uploadRes['saved_path'];
+        _instrumentRefAudioName = result.first.name;
+        _instrumentAudioDuration = (uploadRes['duration'] is num)
+            ? (uploadRes['duration'] as num).toDouble()
+            : 30.0;
+        _detectedBpm = (uploadRes['bpm'] is num)
+            ? (uploadRes['bpm'] as num).toInt()
+            : 120;
+        _instrumentBpm = _detectedBpm!;
+        _isCustomInstrumentTitle = false;
+        _updateInstrumentAutoTitle();
+        notifyListeners();
+      } else {
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> startMicRecording() async {
+    if (_isRecordingMic) return;
+    final ok = await api.startMicRecording();
+    if (ok) {
+      _isRecordingMic = true;
+      _micRecordElapsedSec = 0.0;
+      _micRecordTimer?.cancel();
+      _micRecordTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+        _micRecordElapsedSec += 0.2;
+        notifyListeners();
+      });
+      notifyListeners();
+    }
+  }
+
+  Future<void> stopMicRecording() async {
+    if (!_isRecordingMic) return;
+    _micRecordTimer?.cancel();
+    _micRecordTimer = null;
+    _isRecordingMic = false;
+    _isDetectingBpm = true;
+    notifyListeners();
+
+    final res = await api.stopMicRecording();
+    _isDetectingBpm = false;
+    if (res != null && res['success'] == true) {
+      _instrumentRefAudioPath = res['saved_path'];
+      _instrumentRefAudioName = res['filename'];
+      _instrumentAudioDuration = (res['duration'] is num)
+          ? (res['duration'] as num).toDouble()
+          : _micRecordElapsedSec;
+      _detectedBpm = (res['bpm'] is num) ? (res['bpm'] as num).toInt() : 120;
+      _instrumentBpm = _detectedBpm!;
+      _isCustomInstrumentTitle = false;
+      _updateInstrumentAutoTitle();
+      notifyListeners();
+    } else {
+      notifyListeners();
+    }
+  }
+
+  Future<void> startInstrumentTransform() async {
+    if (_instrumentRefAudioPath == null || _instrumentRefAudioPath!.isEmpty) {
+      return;
+    }
+
+    final instName = _selectedInstrument.name.split('(').first.trim();
+    final songTitle = instrumentTitle.isNotEmpty
+        ? instrumentTitle
+        : (_instrumentRefAudioName != null
+            ? '${_instrumentRefAudioName!.split('.').first} - $instName Solo'
+            : '$instName Solo');
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final effectivePrompt = 'instrumental, no vocals, solo $instName, pure acoustic $instName solo, zero voice, no singer, $instrumentPrompt';
+    final effectiveNegative = 'vocals, singing, speech, voice, vocal, backing band, drums, rhythm, $instrumentNegativePrompt';
+
+    final task = GenerationTask(
+      taskId: tempId,
+      title: songTitle,
+      style: effectivePrompt,
+      model: _selectedModel,
+      isCover: true,
+      isInstrumental: true,
+      progress: 5,
+      status: 'processing',
+      message: '$instName tek enstrüman solo izolasyonu işleniyor...',
+    );
+    _activeTasks.insert(0, task);
+    notifyListeners();
+
+    final taskId = await api.generateSong(
+      title: songTitle,
+      lyrics: '[instrumental]',
+      style: effectivePrompt,
+      isCover: true,
+      isInstrumental: true,
+      refAudioPath: _instrumentRefAudioPath,
+      model: _selectedModel,
+      bpm: _instrumentBpm,
+      duration: _instrumentAudioDuration,
+      isAutoDuration: true,
+      excludeStyles: effectiveNegative,
+      vocalGender: 'None',
+      maxMode: _maxMode,
+      weirdness: 25,
+      styleInfluence: 90,
+      variety: 30,
+    );
+
+    if (taskId != null) {
+      task.taskId = taskId;
+      _ensureTaskPollTimer();
+    } else {
+      task.status = 'error';
+      task.message = 'Sunucuya bağlanılamadı.';
+      Future.delayed(const Duration(seconds: 4), () {
+        _activeTasks.remove(task);
+        notifyListeners();
+      });
+    }
+    notifyListeners();
+  }
+
   Future<void> checkBackendStatus() async {
     final status = await api.checkStatus();
     if (status != null) {
@@ -436,13 +752,14 @@ class AppStateProvider extends ChangeNotifier {
   Future<bool> importLocalModelFile(String modelId) async {
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['safetensors', 'bin', 'ckpt', 'pt'],
+      allowedExtensions: ['safetensors', 'bin', 'ckpt', 'pt', 'pth', 'SAFETENSORS', 'BIN', 'CKPT', 'PT'],
     );
 
     if (result.isNotEmpty && result.first.path != null) {
       final filePath = result.first.path!;
       final ok = await api.importLocalModel(modelId, filePath);
       if (ok) {
+        _startDownloadPolling();
         await refreshModels();
         return true;
       }
@@ -450,10 +767,20 @@ class AppStateProvider extends ChangeNotifier {
     return false;
   }
 
+  Future<void> pickNewModelsDir() async {
+    final selectedDir = await FilePicker.getDirectoryPath();
+    if (selectedDir != null && selectedDir.isNotEmpty) {
+      final ok = await api.updateModelsPath(selectedDir);
+      if (ok) {
+        _modelsDir = selectedDir;
+        await refreshModels();
+        notifyListeners();
+      }
+    }
+  }
+
   Future<void> refreshSongs() async {
-    _songs = await api.fetchSongs();
-    StyleService.instance.syncFromSongs(_songs);
-    notifyListeners();
+    await _checkAndReconcileTasks();
   }
 
   Future<void> startGeneration() async {
@@ -503,6 +830,7 @@ class AppStateProvider extends ChangeNotifier {
 
     if (taskId != null) {
       task.taskId = taskId;
+      _ensureTaskPollTimer();
     } else {
       task.status = 'error';
       task.message = 'Sunucuya bağlanılamadı.';
