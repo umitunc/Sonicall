@@ -7,6 +7,7 @@ import random
 import asyncio
 from pathlib import Path
 from typing import Dict, Any, List, Optional
+import numpy as np
 
 from config import SONGS_DIR, COVERS_DIR, DATA_FILE, UPLOADS_DIR
 from comfy_bridge import comfy_bridge, COMFY_INPUT
@@ -84,10 +85,81 @@ def generate_cover_image(song_id: str, title: str, style: str) -> str:
         f.write(svg_content)
     return f"/output/covers/{filename}"
 
+def format_song_lyrics_with_intro_outro(raw_lyrics: str, style: str, is_instrumental: bool) -> str:
+    """
+    Ensures every song has a natural musical progression with [Intro] and [Outro]/[End]
+    even if the user only typed plain lyrics or left them blank.
+    Prevents abrupt cutoff endings.
+    """
+    if is_instrumental:
+        return "[Intro]\n[Melodic Instrumental Intro]\n\n[Theme]\n[Instrumental Solo]\n\n[Outro]\n[Melodic Instrumental Outro]\n[Fade Out]\n[End]"
+
+    text = raw_lyrics.strip()
+    if not text:
+        text = "Singing with passion and power\nEvery melody takes me higher"
+
+    lower_text = text.lower()
+
+    # 1. Automatic Intro Injection
+    has_intro = "[intro]" in lower_text or "[instrumental intro]" in lower_text
+    if not has_intro:
+        intro_tag = "[Intro]\n[Catchy Melodic Intro]\n\n"
+        if not text.startswith("["):
+            text = f"{intro_tag}[Verse]\n{text}"
+        else:
+            text = f"{intro_tag}{text}"
+
+    # 2. Automatic Outro Injection
+    has_outro = any(tag in lower_text for tag in ["[outro]", "[fade out]", "[end]", "[instrumental outro]", "[fade]"])
+    if not has_outro:
+        outro_tag = "\n\n[Outro]\n[Melodic Vocal Cadence]\n[Fade Out]\n[End]"
+        text = f"{text}{outro_tag}"
+
+    return text
+
+def apply_musical_fade_envelope(audio_data: np.ndarray, sample_rate: int, fade_out_sec: float = 4.5) -> np.ndarray:
+    """
+    Applies a smooth micro fade-in (40ms) and an organic cosine S-curve fade-out (3.5 - 5s)
+    to eliminate abrupt endings and deliver a radio-ready natural outro.
+    """
+    if len(audio_data) == 0:
+        return audio_data
+
+    is_int16 = (audio_data.dtype == np.int16)
+    if is_int16:
+        audio = audio_data.astype(np.float32) / 32768.0
+    else:
+        audio = audio_data.astype(np.float32).copy()
+
+    total_samples = len(audio)
+
+    # 1. Micro fade-in (40ms) to eliminate initial DC offset pop
+    fade_in_samples = min(int(sample_rate * 0.04), total_samples // 10)
+    if fade_in_samples > 0:
+        curve_in = np.linspace(0.0, 1.0, fade_in_samples, dtype=np.float32)
+        if audio.ndim == 2:
+            curve_in = curve_in[:, np.newaxis]
+        audio[:fade_in_samples] *= curve_in
+
+    # 2. Natural Cosine S-Curve Outro Fade-Out (last 4.0 - 5.0 seconds)
+    actual_fade_sec = min(fade_out_sec, (total_samples / sample_rate) * 0.20)
+    fade_out_samples = int(sample_rate * actual_fade_sec)
+    if fade_out_samples > 0:
+        t = np.linspace(0, np.pi / 2, fade_out_samples, dtype=np.float32)
+        curve_out = (np.cos(t) ** 2)
+        if audio.ndim == 2:
+            curve_out = curve_out[:, np.newaxis]
+        audio[-fade_out_samples:] *= curve_out
+
+    if is_int16:
+        return np.clip(audio * 32767.0, -32768, 32767).astype(np.int16)
+    return np.clip(audio, -1.0, 1.0)
+
 class YuE2EngineAdapter:
     def __init__(self):
         self.active_tasks: Dict[str, Dict[str, Any]] = {}
         self.subscribers: List[asyncio.Queue] = []
+        self.queue_lock = asyncio.Lock()
 
     async def broadcast_progress(self, message: Dict[str, Any]):
         for q in list(self.subscribers):
@@ -105,13 +177,17 @@ class YuE2EngineAdapter:
         duration_sec: float,
         temperature: float = 0.85,
         cfg_scale: float = 1.0,
-        steps: int = 24
+        steps: int = 24,
+        top_p: float = 0.95,
+        repetition_penalty: float = 1.15,
+        negative_style: str = "",
+        ckpt_name: str = "yue2_convrot_int8.safetensors"
     ) -> Dict[str, Any]:
         return {
             "1": {
                 "class_type": "CheckpointLoaderSimple",
                 "inputs": {
-                    "ckpt_name": "yue2_convrot_int8.safetensors"
+                    "ckpt_name": ckpt_name
                 }
             },
             "2": {
@@ -124,7 +200,7 @@ class YuE2EngineAdapter:
                     "mode": "full",
                     "max_abc_tokens": 2048,
                     "temperature": temperature,
-                    "top_p": 0.9,
+                    "top_p": top_p,
                     "top_k": 30,
                     "repetition_penalty": 1.005,
                     "penalty_window": 100
@@ -134,16 +210,17 @@ class YuE2EngineAdapter:
                 "class_type": "YuE2GenerateMusic",
                 "inputs": {
                     "clip": ["1", 1],
-                    "style": style,
+                    "style": f"{style} [Exclude: {negative_style}]" if negative_style else style,
+                    "negative_style": negative_style,
                     "lyrics": lyrics,
                     "abc": ["2", 0],
                     "seed": seed,
                     "mode": "full",
                     "max_duration": duration_sec,
                     "temperature": temperature,
-                    "top_p": 0.95,
+                    "top_p": top_p,
                     "top_k": 100,
-                    "repetition_penalty": 1.2,
+                    "repetition_penalty": repetition_penalty,
                     "cfg_scale": cfg_scale
                 }
             },
@@ -197,13 +274,17 @@ class YuE2EngineAdapter:
         duration_sec: float,
         temperature: float = 0.85,
         cfg_scale: float = 1.0,
-        steps: int = 24
+        steps: int = 24,
+        top_p: float = 0.95,
+        repetition_penalty: float = 1.15,
+        negative_style: str = "",
+        ckpt_name: str = "yue2_convrot_int8.safetensors"
     ) -> Dict[str, Any]:
         return {
             "1": {
                 "class_type": "CheckpointLoaderSimple",
                 "inputs": {
-                    "ckpt_name": "yue2_convrot_int8.safetensors"
+                    "ckpt_name": ckpt_name
                 }
             },
             "10": {
@@ -230,16 +311,17 @@ class YuE2EngineAdapter:
                 "class_type": "YuE2GenerateMusic",
                 "inputs": {
                     "clip": ["1", 1],
-                    "style": style,
+                    "style": f"{style} [Exclude: {negative_style}]" if negative_style else style,
+                    "negative_style": negative_style,
                     "lyrics": lyrics,
                     "abc": ["12", 0],
                     "seed": seed,
                     "mode": "melody",
                     "max_duration": duration_sec,
                     "temperature": temperature,
-                    "top_p": 0.95,
+                    "top_p": top_p,
                     "top_k": 100,
-                    "repetition_penalty": 1.2,
+                    "repetition_penalty": repetition_penalty,
                     "cfg_scale": cfg_scale
                 }
             },
@@ -294,11 +376,14 @@ class YuE2EngineAdapter:
         model = request_data.get("model", "YuE2 3B INT8")
         seed = int(request_data.get("custom_seed") or random.randint(1, 9999999))
 
+        # Format and guarantee structural Intro & Outro progression
+        structured_lyrics = format_song_lyrics_with_intro_outro(lyrics, style, is_instrumental)
+
         # Advanced options mapping
         is_auto_duration = bool(request_data.get("is_auto_duration", False))
         if is_auto_duration:
-            clean_lines = [l for l in lyrics.split('\n') if l.strip() and not (l.startswith('[') and l.endswith(']'))]
-            calculated_sec = max(30.0, min(240.0, len(clean_lines) * 4.2 + 18.0))
+            clean_lines = [l for l in structured_lyrics.split('\n') if l.strip() and not (l.startswith('[') and l.endswith(']'))]
+            calculated_sec = max(35.0, min(240.0, len(clean_lines) * 4.2 + 24.0))
             duration_sec = calculated_sec
         else:
             duration_sec = float(request_data.get("duration", 45.0))
@@ -320,6 +405,19 @@ class YuE2EngineAdapter:
         max_mode = bool(request_data.get("max_mode", False))
         steps = 36 if max_mode else 24
 
+        # Variety mapping (Akor ve Ritim Çeşitliliği / Top-P ve Repetition Penalty)
+        variety = int(request_data.get("variety", 70))
+        # 0% -> top_p 0.85, rep_penalty 1.30 (Daha tahmin edilebilir, katı tekrar)
+        # 50% -> top_p 0.93, rep_penalty 1.18 (Dengeli pop yapısı)
+        # 100% -> top_p 0.98, rep_penalty 1.05 (Zengin akor çeşitliliği, ekstra varyasyon)
+        top_p = round(0.85 + (variety / 100.0) * 0.13, 3)
+        repetition_penalty = round(1.30 - (variety / 100.0) * 0.25, 3)
+
+        # Exclude styles (Negatif Tarz Filtresi)
+        exclude_styles = str(request_data.get("exclude_styles", "")).strip()
+
+        ckpt_name = "yue2_studio_bf16.safetensors" if "bf16" in model.lower() else "yue2_convrot_int8.safetensors"
+
         async def send_progress(pct: int, msg: str):
             await self.broadcast_progress({
                 "task_id": task_id,
@@ -328,107 +426,126 @@ class YuE2EngineAdapter:
                 "message": msg
             })
 
-        try:
-            await send_progress(5, f"YuE2 Motoru ve GPU belleği hazırlanıyor (Hedef Süre: {int(duration_sec)}s)...")
-
-            if is_cover and ref_audio_path and Path(ref_audio_path).exists():
-                ref_src = Path(ref_audio_path)
-                ref_filename = f"cover_ref_{task_id}{ref_src.suffix}"
-                comfy_ref_dest = COMFY_INPUT / ref_filename
-                shutil.copy(ref_src, comfy_ref_dest)
-                print(f"[YuE2Engine] Staged cover reference audio to {comfy_ref_dest}")
-
-                await send_progress(10, "SheetSage2: Şarkıdan melodi ve vokal çıkarılıyor...")
-                prompt_graph = self.build_cover_prompt(
-                    ref_filename=ref_filename,
-                    style=style,
-                    lyrics=lyrics if not is_instrumental else "[instrumental]",
-                    seed=seed,
-                    duration_sec=duration_sec,
-                    temperature=temperature,
-                    cfg_scale=cfg_scale,
-                    steps=steps
-                )
-            else:
-                prompt_graph = self.build_text_to_music_prompt(
-                    title=title,
-                    style=style,
-                    lyrics=lyrics if not is_instrumental else "[instrumental]",
-                    seed=seed,
-                    duration_sec=duration_sec,
-                    temperature=temperature,
-                    cfg_scale=cfg_scale,
-                    steps=steps
-                )
-
-            # Execute real workflow via ComfyUI Bridge on RTX GPU
-            generated_file = await comfy_bridge.execute_workflow(
-                prompt_graph,
-                on_progress=send_progress
-            )
-
-            if not generated_file or not Path(generated_file).exists():
-                raise RuntimeError("ComfyUI ses dosyası oluşturulamadı.")
-
-            await send_progress(95, "Ses dosyası 44.1kHz stüdyo WAV formatına dönüştürülüyor...")
-
-            # Convert/Copy generated audio into Sonicall output directory as standard WAV
-            gen_path = Path(generated_file)
-            saved_song_name = f"{task_id}.wav"
-            dest_song_path = SONGS_DIR / saved_song_name
-
-            try:
-                import soundfile as sf
-                audio_data, sample_rate = sf.read(str(gen_path))
-                sf.write(str(dest_song_path), audio_data, sample_rate, subtype='PCM_16')
-            except Exception as conv_err:
-                print(f"[YuE2Engine] Fallback copy without conversion: {conv_err}")
-                shutil.copy(gen_path, dest_song_path)
-
-            cover_url = generate_cover_image(task_id, title, style)
-            audio_url = f"/output/songs/{saved_song_name}"
-
-            minutes = int(duration_sec) // 60
-            seconds = int(duration_sec) % 60
-            duration_formatted = f"{minutes:02d}:{seconds:02d}"
-
-            song_record = {
-                "id": task_id,
-                "title": title,
-                "style": style,
-                "lyrics": lyrics if not is_instrumental else "[Instrumental]",
-                "is_cover": is_cover,
-                "is_instrumental": is_instrumental,
-                "model": f"{model} + SheetSage2" if is_cover else model,
-                "duration_seconds": int(duration_sec),
-                "duration_formatted": duration_formatted,
-                "audio_url": audio_url,
-                "cover_url": cover_url,
-                "liked": False,
-                "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "date_group": "Bugün"
-            }
-
-            db = get_db()
-            db.insert(0, song_record)
-            save_db(db)
-
+        if self.queue_lock.locked():
             await self.broadcast_progress({
                 "task_id": task_id,
-                "status": "completed",
-                "progress": 100,
-                "message": "Şarkı başarıyla üretildi!",
-                "song": song_record
-            })
-            print(f"[YuE2Engine] Song {task_id} successfully created and saved ({duration_formatted})!")
-
-        except Exception as e:
-            print(f"[YuE2Engine] Generation Error: {e}")
-            await self.broadcast_progress({
-                "task_id": task_id,
-                "status": "error",
+                "status": "queued",
                 "progress": 0,
-                "message": f"Hata: {str(e)}"
+                "message": "Sırada bekliyor (Önceki şarkı GPU üzerinde işleniyor)..."
             })
+
+        async with self.queue_lock:
+            try:
+                await send_progress(5, f"YuE2 Motoru ve GPU belleği hazırlanıyor (Hedef Süre: {int(duration_sec)}s)...")
+
+                if is_cover and ref_audio_path and Path(ref_audio_path).exists():
+                    ref_src = Path(ref_audio_path)
+                    ref_filename = f"cover_ref_{task_id}{ref_src.suffix}"
+                    comfy_ref_dest = COMFY_INPUT / ref_filename
+                    shutil.copy(ref_src, comfy_ref_dest)
+                    print(f"[YuE2Engine] Staged cover reference audio to {comfy_ref_dest}")
+
+                    await send_progress(10, "SheetSage2: Şarkıdan melodi ve vokal çıkarılıyor...")
+                    prompt_graph = self.build_cover_prompt(
+                        ref_filename=ref_filename,
+                        style=style,
+                        lyrics=structured_lyrics,
+                        seed=seed,
+                        duration_sec=duration_sec,
+                        temperature=temperature,
+                        cfg_scale=cfg_scale,
+                        steps=steps,
+                        top_p=top_p,
+                        repetition_penalty=repetition_penalty,
+                        negative_style=exclude_styles,
+                        ckpt_name=ckpt_name
+                    )
+                else:
+                    prompt_graph = self.build_text_to_music_prompt(
+                        title=title,
+                        style=style,
+                        lyrics=structured_lyrics,
+                        seed=seed,
+                        duration_sec=duration_sec,
+                        temperature=temperature,
+                        cfg_scale=cfg_scale,
+                        steps=steps,
+                        top_p=top_p,
+                        repetition_penalty=repetition_penalty,
+                        negative_style=exclude_styles,
+                        ckpt_name=ckpt_name
+                    )
+
+                # Execute real workflow via ComfyUI Bridge on RTX GPU
+                generated_file = await comfy_bridge.execute_workflow(
+                    prompt_graph,
+                    on_progress=send_progress
+                )
+
+                if not generated_file or not Path(generated_file).exists():
+                    raise RuntimeError("ComfyUI ses dosyası oluşturulamadı.")
+
+                await send_progress(95, "Ses dosyası 44.1kHz stüdyo WAV formatına dönüştürülüyor...")
+
+                # Convert/Copy generated audio into Sonicall output directory as standard WAV
+                gen_path = Path(generated_file)
+                saved_song_name = f"{task_id}.wav"
+                dest_song_path = SONGS_DIR / saved_song_name
+
+                try:
+                    import soundfile as sf
+                    audio_data, sample_rate = sf.read(str(gen_path))
+                    # Apply professional micro fade-in and natural S-curve outro fade-out (no abrupt cuts!)
+                    smooth_audio = apply_musical_fade_envelope(audio_data, sample_rate, fade_out_sec=4.5)
+                    sf.write(str(dest_song_path), smooth_audio, sample_rate, subtype='PCM_16')
+                except Exception as conv_err:
+                    print(f"[YuE2Engine] Fallback copy without conversion: {conv_err}")
+                    shutil.copy(gen_path, dest_song_path)
+
+                cover_url = generate_cover_image(task_id, title, style)
+                audio_url = f"/output/songs/{saved_song_name}"
+
+                minutes = int(duration_sec) // 60
+                seconds = int(duration_sec) % 60
+                duration_formatted = f"{minutes:02d}:{seconds:02d}"
+
+                song_record = {
+                    "id": task_id,
+                    "title": title,
+                    "style": style,
+                    "lyrics": structured_lyrics,
+                    "is_cover": is_cover,
+                    "is_instrumental": is_instrumental,
+                    "model": f"{model} + SheetSage2" if is_cover else model,
+                    "duration_seconds": int(duration_sec),
+                    "duration_formatted": duration_formatted,
+                    "audio_url": audio_url,
+                    "cover_url": cover_url,
+                    "liked": False,
+                    "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "date_group": "Bugün"
+                }
+
+                db = get_db()
+                db.insert(0, song_record)
+                save_db(db)
+
+                await self.broadcast_progress({
+                    "task_id": task_id,
+                    "status": "completed",
+                    "progress": 100,
+                    "message": "Şarkı başarıyla üretildi!",
+                    "song": song_record
+                })
+                print(f"[YuE2Engine] Song {task_id} successfully created and saved ({duration_formatted})!")
+
+            except Exception as e:
+                print(f"[YuE2Engine] Generation Error: {e}")
+                await self.broadcast_progress({
+                    "task_id": task_id,
+                    "status": "error",
+                    "progress": 0,
+                    "message": f"Hata: {str(e)}"
+                })
 
 engine_adapter = YuE2EngineAdapter()
