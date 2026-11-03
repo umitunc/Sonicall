@@ -291,8 +291,8 @@ class YuE2EngineAdapter:
         is_instrumental: bool = False
     ) -> Dict[str, Any]:
         sheetsage_mode = "melody"
-        effective_lyrics = "[instrumental]" if is_instrumental else lyrics
-        effective_style = f"instrumental, no vocals, solo, pure acoustic solo, zero voice, no singer, {style}" if is_instrumental else style
+        effective_lyrics = "" if is_instrumental else lyrics
+        effective_style = f"instrumental, pure acoustic solo, {style}, single player instrument solo, unaccompanied, no vocals, zero voice, no singer, no choir, no speech" if is_instrumental else style
 
         return {
             "1": {
@@ -520,7 +520,21 @@ class YuE2EngineAdapter:
             })
 
         async with self.queue_lock:
+            solo_flag_file = COMFY_INPUT / "instrument_solo.flag"
             try:
+                if is_instrumental:
+                    try:
+                        COMFY_INPUT.mkdir(parents=True, exist_ok=True)
+                        solo_flag_file.write_text("1")
+                        print("[YuE2Engine] Set instrument_solo.flag for SheetSage2/YuE2 isolation")
+                    except Exception as fe:
+                        print(f"[YuE2Engine] Solo flag write error: {fe}")
+                else:
+                    try:
+                        solo_flag_file.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+
                 await send_progress(5, f"YuE2 Motoru ve GPU belleği hazırlanıyor (Hedef Süre: {int(duration_sec)}s)...")
 
                 if is_cover and ref_audio_path and Path(ref_audio_path).exists():
@@ -669,5 +683,10 @@ class YuE2EngineAdapter:
                     "progress": 0,
                     "message": f"Hata: {str(e)}"
                 })
+            finally:
+                try:
+                    solo_flag_file.unlink(missing_ok=True)
+                except Exception:
+                    pass
 
 engine_adapter = YuE2EngineAdapter()

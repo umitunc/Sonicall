@@ -1540,14 +1540,18 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
                                     style: const TextStyle(fontSize: 18),
                                   ),
                                   const SizedBox(width: 8),
-                                  Text(
-                                    state.instrumentRefAudioPath == null
-                                        ? 'Önce Ses Yükleyin veya Kaydedin'
-                                        : '${state.selectedInstrument.name.split('(').first} ile Dönüştür (${_formatDuration(state.instrumentAudioDuration)})',
-                                    style: TextStyle(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: state.instrumentRefAudioPath != null ? Colors.white : Colors.grey,
+                                  Flexible(
+                                    child: Text(
+                                      state.instrumentRefAudioPath == null
+                                          ? 'Önce Ses Yükleyin veya Kaydedin'
+                                          : '${state.selectedInstrument.name.split('(').first.trim()} ile Dönüştür (${_formatDuration(state.instrumentAudioDuration)})',
+                                      style: TextStyle(
+                                        fontSize: 13.0,
+                                        fontWeight: FontWeight.w700,
+                                        color: state.instrumentRefAudioPath != null ? Colors.white : Colors.grey,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],
