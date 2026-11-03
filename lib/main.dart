@@ -22,9 +22,13 @@ void main() async {
       backgroundColor: Colors.transparent,
       skipTaskbar: false,
       title: 'Sonicall: AI Music & Cover Studio — Trunçgil Teknoloji',
+      titleBarStyle: TitleBarStyle.hidden,
+      windowButtonVisibility: false,
     );
 
     windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.setTitleBarStyle(TitleBarStyle.hidden, windowButtonVisibility: false);
+      await windowManager.setAsFrameless();
       await windowManager.show();
       await windowManager.focus();
     });
@@ -53,6 +57,13 @@ class SonicallApp extends StatelessWidget {
       themeMode: state.themeMode,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
+      builder: (context, child) {
+        final windowChild = VirtualWindowFrameInit()(context, child);
+        // ExcludeSemantics prevents Flutter Windows desktop embedder's accessibility_bridge.cc
+        // from desynchronizing ui::AXTree (Nodes left pending by the update)
+        // during rapid progress animations and overlay/dialog transitions.
+        return ExcludeSemantics(child: windowChild);
+      },
       home: const MainShell(),
     );
   }

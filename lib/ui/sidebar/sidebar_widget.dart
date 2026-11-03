@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/legacy.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/app_state_provider.dart';
 import '../dialogs/model_hub_dialog.dart';
@@ -25,38 +26,40 @@ class SidebarWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Logo & Brand Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            child: Row(
-              children: [
-                const SonicallLogo(size: 36),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'SONICALL',
-                      style: TextStyle(
-                        fontFamily: 'Segoe UI',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.5,
-                        color: isDark ? Colors.white : AppColors.lightTextPrimary,
+          // Logo & Brand Header (Draggable Window Area)
+          DragToMoveArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Row(
+                children: [
+                  const SonicallLogo(size: 36),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'SONICALL',
+                        style: TextStyle(
+                          fontFamily: 'Segoe UI',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.5,
+                          color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'AI MUSIC STUDIO',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1,
-                        color: AppColors.primary,
+                      Text(
+                        'AI MUSIC STUDIO',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
+                          color: AppColors.primary,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
 
