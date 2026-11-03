@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
 import '../services/api_service.dart';
 import '../services/audio_player_service.dart';
+import '../services/style_service.dart';
 
 enum StudioCategory { songs, speech, sounds }
 enum StudioMode { simple, advanced }
@@ -87,14 +89,21 @@ class AppStateProvider extends ChangeNotifier {
   bool get isMoreOptionsOpen => _isMoreOptionsOpen;
 
   // Generation status
-  bool _isGenerating = false;
-  int _generationProgress = 0;
-  String _generationMessage = '';
-  String? _activeTaskId;
+  // Multi-task generation queue & new songs
+  final List<GenerationTask> _activeTasks = [];
+  final Set<String> _newSongIds = {};
 
-  bool get isGenerating => _isGenerating;
-  int get generationProgress => _generationProgress;
-  String get generationMessage => _generationMessage;
+  List<GenerationTask> get activeTasks => List.unmodifiable(_activeTasks);
+  bool get isGenerating => _activeTasks.isNotEmpty;
+  int get generationProgress => _activeTasks.isEmpty ? 0 : _activeTasks.first.progress;
+  String get generationMessage => _activeTasks.isEmpty ? '' : _activeTasks.first.message;
+
+  bool isSongNew(String songId) => _newSongIds.contains(songId);
+  void markSongRead(String songId) {
+    if (_newSongIds.remove(songId)) {
+      notifyListeners();
+    }
+  }
 
   // Songs & Library
   List<Song> _songs = [];
@@ -116,30 +125,98 @@ class AppStateProvider extends ChangeNotifier {
   }
 
   Future<void> init() async {
+    await _loadPreferences();
     await checkBackendStatus();
     await refreshModels();
     await refreshSongs();
 
     // Listen to live generation progress events from WebSocket
     api.progressStream.listen((event) {
-      if (event.taskId == _activeTaskId) {
-        _generationProgress = event.progress;
-        _generationMessage = event.message;
+      GenerationTask? task;
+      try {
+        task = _activeTasks.firstWhere((t) => t.taskId == event.taskId);
+      } catch (_) {}
+
+      if (task != null) {
+        task.progress = event.progress;
+        task.status = event.status;
+        task.message = event.message;
 
         if (event.status == 'completed') {
-          _isGenerating = false;
-          _generationProgress = 100;
+          _activeTasks.remove(task);
           if (event.song != null) {
+            _songs.removeWhere((s) => s.id == event.song!.id);
             _songs.insert(0, event.song!);
+            _newSongIds.add(event.song!.id);
             audio.playSong(event.song!);
           }
           refreshSongs();
         } else if (event.status == 'error') {
-          _isGenerating = false;
+          task.status = 'error';
+          Future.delayed(const Duration(seconds: 4), () {
+            _activeTasks.remove(task);
+            notifyListeners();
+          });
         }
-        notifyListeners();
+      } else if (event.status == 'completed') {
+        if (event.song != null) {
+          _songs.removeWhere((s) => s.id == event.song!.id);
+          _songs.insert(0, event.song!);
+          _newSongIds.add(event.song!.id);
+        }
+        refreshSongs();
       }
+      notifyListeners();
     });
+  }
+
+  Future<void> _loadPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedModel = prefs.getString('pref_selected_model');
+      if (savedModel != null && savedModel.isNotEmpty) {
+        _selectedModel = savedModel;
+      }
+      final savedMode = prefs.getString('pref_studio_mode');
+      if (savedMode != null) {
+        _mode = savedMode == 'advanced' ? StudioMode.advanced : StudioMode.simple;
+      }
+      final savedVocalGender = prefs.getString('pref_vocal_gender');
+      if (savedVocalGender != null) {
+        _vocalGender = savedVocalGender;
+      }
+      final savedDuration = prefs.getDouble('pref_duration');
+      if (savedDuration != null && savedDuration > 0) {
+        _duration = savedDuration;
+      }
+      final savedAutoDuration = prefs.getBool('pref_is_auto_duration');
+      if (savedAutoDuration != null) {
+        _isAutoDuration = savedAutoDuration;
+      }
+      final savedMaxMode = prefs.getBool('pref_max_mode');
+      if (savedMaxMode != null) {
+        _maxMode = savedMaxMode;
+      }
+      final savedWeirdness = prefs.getInt('pref_weirdness');
+      if (savedWeirdness != null) {
+        _weirdness = savedWeirdness;
+      }
+      final savedStyleInfluence = prefs.getInt('pref_style_influence');
+      if (savedStyleInfluence != null) {
+        _styleInfluence = savedStyleInfluence;
+      }
+      final savedVariety = prefs.getInt('pref_variety');
+      if (savedVariety != null) {
+        _variety = savedVariety;
+      }
+      final savedTheme = prefs.getString('pref_theme_mode');
+      if (savedTheme != null) {
+        _themeMode = savedTheme == 'light' ? ThemeMode.light : ThemeMode.dark;
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[AppStateProvider] Error loading preferences: $e');
+    }
   }
 
   void setActiveTab(String tab) {
@@ -150,6 +227,7 @@ class AppStateProvider extends ChangeNotifier {
   void toggleTheme() {
     _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
     notifyListeners();
+    SharedPreferences.getInstance().then((p) => p.setString('pref_theme_mode', _themeMode == ThemeMode.light ? 'light' : 'dark'));
   }
 
   void setCategory(StudioCategory cat) {
@@ -160,6 +238,7 @@ class AppStateProvider extends ChangeNotifier {
   void setMode(StudioMode m) {
     _mode = m;
     notifyListeners();
+    SharedPreferences.getInstance().then((p) => p.setString('pref_studio_mode', m == StudioMode.advanced ? 'advanced' : 'simple'));
   }
 
   void setTitle(String val) {
@@ -199,16 +278,19 @@ class AppStateProvider extends ChangeNotifier {
   void setSelectedModel(String model) {
     _selectedModel = model;
     notifyListeners();
+    SharedPreferences.getInstance().then((p) => p.setString('pref_selected_model', model));
   }
 
   void setDuration(double val) {
     _duration = val;
     notifyListeners();
+    SharedPreferences.getInstance().then((p) => p.setDouble('pref_duration', val));
   }
 
   void toggleAutoDuration(bool val) {
     _isAutoDuration = val;
     notifyListeners();
+    SharedPreferences.getInstance().then((p) => p.setBool('pref_is_auto_duration', val));
   }
 
   void setExcludeStyles(String val) {
@@ -219,26 +301,31 @@ class AppStateProvider extends ChangeNotifier {
   void setVocalGender(String val) {
     _vocalGender = val;
     notifyListeners();
+    SharedPreferences.getInstance().then((p) => p.setString('pref_vocal_gender', val));
   }
 
   void toggleMaxMode(bool val) {
     _maxMode = val;
     notifyListeners();
+    SharedPreferences.getInstance().then((p) => p.setBool('pref_max_mode', val));
   }
 
   void setWeirdness(int val) {
     _weirdness = val;
     notifyListeners();
+    SharedPreferences.getInstance().then((p) => p.setInt('pref_weirdness', val));
   }
 
   void setStyleInfluence(int val) {
     _styleInfluence = val;
     notifyListeners();
+    SharedPreferences.getInstance().then((p) => p.setInt('pref_style_influence', val));
   }
 
   void setVariety(int val) {
     _variety = val;
     notifyListeners();
+    SharedPreferences.getInstance().then((p) => p.setInt('pref_variety', val));
   }
 
   void toggleMoreOptions() {
@@ -365,16 +452,34 @@ class AppStateProvider extends ChangeNotifier {
 
   Future<void> refreshSongs() async {
     _songs = await api.fetchSongs();
+    StyleService.instance.syncFromSongs(_songs);
     notifyListeners();
   }
 
   Future<void> startGeneration() async {
-    if (_isGenerating) return;
-
     final songTitle = _title.trim().isEmpty ? 'Yeni Şarkı' : _title.trim();
-    _isGenerating = true;
-    _generationProgress = 5;
-    _generationMessage = 'Parametreler YuE2 motoruna iletiliyor...';
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+
+    // Auto-record style to history directly without user having to press save
+    if (_style.trim().isNotEmpty) {
+      StyleService.instance.recordStyle(
+        prompt: _style,
+        title: songTitle,
+      );
+    }
+
+    final task = GenerationTask(
+      taskId: tempId,
+      title: songTitle,
+      style: _style,
+      model: _selectedModel,
+      isCover: _isCover,
+      isInstrumental: _isInstrumental,
+      progress: 5,
+      status: 'processing',
+      message: 'Parametreler YuE2 motoruna iletiliyor...',
+    );
+    _activeTasks.insert(0, task);
     notifyListeners();
 
     final taskId = await api.generateSong(
@@ -397,12 +502,16 @@ class AppStateProvider extends ChangeNotifier {
     );
 
     if (taskId != null) {
-      _activeTaskId = taskId;
+      task.taskId = taskId;
     } else {
-      _isGenerating = false;
-      _generationMessage = 'Sunucuya bağlanılamadı.';
-      notifyListeners();
+      task.status = 'error';
+      task.message = 'Sunucuya bağlanılamadı.';
+      Future.delayed(const Duration(seconds: 4), () {
+        _activeTasks.remove(task);
+        notifyListeners();
+      });
     }
+    notifyListeners();
   }
 
   Future<void> toggleSongLike(Song song) async {
