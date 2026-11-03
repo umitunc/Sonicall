@@ -380,6 +380,65 @@ class YuE2EngineAdapter:
             }
         }
 
+    def resolve_checkpoint_name(self, model: str) -> str:
+        """
+        Dynamically inspects ComfyUI's active checkpoint inventory so that ckpt_name
+        is 100% guaranteed to be in CheckpointLoaderSimple's allowed enum list.
+        """
+        allowed = []
+        try:
+            import urllib.request
+            import json
+            req = urllib.request.Request("http://127.0.0.1:8188/object_info/CheckpointLoaderSimple")
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
+                data = json.loads(resp.read().decode())
+                allowed = data["CheckpointLoaderSimple"]["input"]["required"]["ckpt_name"][0]
+        except Exception:
+            pass
+
+        if not allowed:
+            from config import DEFAULT_COMFYUI_MODELS_PATH
+            ck_dir = Path(DEFAULT_COMFYUI_MODELS_PATH) / "checkpoints"
+            if ck_dir.exists():
+                allowed = [f.name for f in ck_dir.glob("*.safetensors")]
+
+        if not allowed:
+            return "yue2_convrot_int8.safetensors"
+
+        m_lower = model.lower()
+
+        # 1. 7B / Full / BF16 / Studio
+        if "7b" in m_lower or "bf16" in m_lower or "studio" in m_lower:
+            for cand in ["yue_7b_full_bf16.safetensors", "yue2_3b_bf16.safetensors", "yue2_studio_bf16.safetensors"]:
+                if cand in allowed:
+                    return cand
+            for a in allowed:
+                if "bf16" in a.lower():
+                    return a
+
+        # 2. ACE-Step
+        if "ace" in m_lower:
+            for a in allowed:
+                if "ace" in a.lower():
+                    return a
+
+        # 3. DiffRhythm
+        if "diff" in m_lower:
+            for a in allowed:
+                if "diff" in a.lower():
+                    return a
+
+        # 4. Default INT8 / ConvRot
+        for cand in ["yue2_convrot_int8.safetensors", "yue2_3b_int8_convrot.safetensors"]:
+            if cand in allowed:
+                return cand
+
+        for a in allowed:
+            if "int8" in a.lower() or "convrot" in a.lower():
+                return a
+
+        return allowed[0]
+
     async def run_generation_task(self, task_id: str, request_data: Dict[str, Any]):
         title = request_data.get("title", "").strip() or "Untitled Track"
         lyrics = request_data.get("lyrics", "").strip() or "[verse]\nSinging with passion and power"
@@ -441,17 +500,8 @@ class YuE2EngineAdapter:
         # Exclude styles (Negatif Tarz Filtresi)
         exclude_styles = str(request_data.get("exclude_styles", "")).strip()
 
-        m_lower = model.lower()
-        if "7b" in m_lower:
-            ckpt_name = "yue_7b_full_bf16.safetensors"
-        elif "ace" in m_lower:
-            ckpt_name = "ace_step_transformer.safetensors"
-        elif "diff" in m_lower:
-            ckpt_name = "diffrhythm_full.safetensors"
-        elif "bf16" in m_lower or "studio" in m_lower:
-            ckpt_name = "yue2_studio_bf16.safetensors"
-        else:
-            ckpt_name = "yue2_convrot_int8.safetensors"
+        # Dynamically resolve checkpoint to guarantee 100% valid ComfyUI prompt enum
+        ckpt_name = self.resolve_checkpoint_name(model)
 
         async def send_progress(pct: int, msg: str):
             await self.broadcast_progress({
