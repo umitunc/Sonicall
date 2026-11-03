@@ -28,12 +28,10 @@ void main() {
       ),
     );
 
-    // Ensure dialog content is displayed
+    // Ensure dialog content is displayed (only installed/available models are rendered)
     expect(find.text('Yapay Zeka Müzik Modeli'), findsOneWidget);
     expect(find.text('YuE2 3B INT8 ConvRot'), findsOneWidget);
-    expect(find.text('YuE2 Studio BF16 (Mastering Quality)'), findsOneWidget);
     expect(find.text('~6 GB VRAM'), findsOneWidget);
-    expect(find.text('~12 GB VRAM'), findsOneWidget);
     expect(find.text('Model Hub'), findsOneWidget);
 
     // Verify there are no overflow errors

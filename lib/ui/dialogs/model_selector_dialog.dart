@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../models/song_model.dart';
 import '../../providers/app_state_provider.dart';
+import '../widgets/top_model_selector_bar.dart';
 import 'model_hub_dialog.dart';
 
 class ModelSelectorDialog extends StatelessWidget {
@@ -25,17 +27,17 @@ class ModelSelectorDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: dialogBg,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         side: BorderSide(color: borderColor, width: 1),
       ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(
-          maxWidth: 620,
-          maxHeight: 680,
+          maxWidth: 580,
+          maxHeight: 520,
         ),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,19 +46,19 @@ class ModelSelectorDialog extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFFFF5E3A), Color(0xFFFF2A68)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.tune_rounded, color: Colors.white, size: 22),
+                    child: const Icon(Icons.tune_rounded, color: Colors.white, size: 20),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,17 +66,16 @@ class ModelSelectorDialog extends StatelessWidget {
                         Text(
                           'Yapay Zeka Müzik Modeli',
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            letterSpacing: -0.3,
                             color: isDark ? Colors.white : AppColors.lightTextPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Donanım gücünüze ve istediğiniz akustik detay seviyesine göre modeli seçin.',
+                          'Donanım gücünüze ve hız ihtiyacınıza göre modeli seçin.',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11.5,
                             color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                           ),
                         ),
@@ -92,82 +93,65 @@ class ModelSelectorDialog extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
-              // Scrollable Model List
+              // Concise Model Cards List (ONLY Installed Models)
               Flexible(
                 child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      // Model 1: YuE2 3B INT8 ConvRot
-                      _buildModelCard(
-                        context: context,
-                        isDark: isDark,
-                        isSelected: state.selectedModel == 'YuE2 3B INT8',
-                        modelKey: 'YuE2 3B INT8',
-                        iconStr: '⚡',
-                        iconColor: const Color(0xFFFF9500),
-                        title: 'YuE2 3B INT8 ConvRot',
-                        badgeText: 'ÖNERİLEN • ULTRA HIZLI',
-                        badgeColor: const Color(0xFF10B981),
-                        vramText: '~6 GB VRAM',
-                        vramColor: const Color(0xFF10B981),
-                        description:
-                            'Optimize edilmiş INT8 kuantizasyonu ve döner konvolüsyonel dikkat mimarisi. Düşük gecikmeyle anlık taslaklar, vokal melodileri ve hızlı parça üretimi için idealdir.',
-                        specs: [
-                          _SpecItem(label: 'Üretim Hızı', value: '⚡⚡⚡ ~15-20 sn (Çok Hızlı)'),
-                          _SpecItem(label: 'Minimum VRAM', value: '5.8 GB (RTX 3060/4060+)'),
-                          _SpecItem(label: 'Örnekleme', value: '44.1 kHz / 24-bit Stereo'),
-                          _SpecItem(label: 'Kuantizasyon', value: 'INT8 Dynamic Weights'),
-                        ],
-                        onSelect: () {
-                          state.setSelectedModel('YuE2 3B INT8');
-                          Navigator.of(context).pop();
-                        },
-                      ),
+                  child: Builder(
+                    builder: (context) {
+                      final installedList = state.models.where((m) => m.installed && m.id != 'sheetsage2_bf16').toList();
+                      
+                      // If no models loaded yet or list is empty, show default 3B INT8
+                      if (installedList.isEmpty) {
+                        return _buildConciseModelCard(
+                          context: context,
+                          isDark: isDark,
+                          isSelected: true,
+                          iconStr: '⚡',
+                          title: 'YuE2 3B INT8 ConvRot',
+                          badgeText: 'ÖNERİLEN • ULTRA HIZLI',
+                          badgeColor: const Color(0xFFF59E0B),
+                          vramText: '~6 GB VRAM',
+                          vramColor: const Color(0xFF10B981),
+                          quickSpecs: '⚡ ~15-20 sn • 44.1 kHz 24-bit • INT8 Dynamic',
+                          description: 'Düşük gecikmeyle anlık taslaklar, vokal melodileri ve hızlı üretim.',
+                          onSelect: () {
+                            state.setSelectedModel('YuE2 3B INT8');
+                            Navigator.of(context).pop();
+                          },
+                        );
+                      }
 
-                      const SizedBox(height: 14),
-
-                      // Model 2: YuE2 Studio BF16
-                      _buildModelCard(
-                        context: context,
-                        isDark: isDark,
-                        isSelected: state.selectedModel == 'YuE2 Studio BF16',
-                        modelKey: 'YuE2 Studio BF16',
-                        iconStr: '💎',
-                        iconColor: const Color(0xFF3B82F6),
-                        title: 'YuE2 Studio BF16 (Mastering Quality)',
-                        badgeText: 'STUDIO MASTERING',
-                        badgeColor: const Color(0xFF3B82F6),
-                        vramText: '~12 GB VRAM',
-                        vramColor: const Color(0xFFF59E0B),
-                        description:
-                            'Sıkıştırmasız 16-bit Bfloat16 saf ağırlıklar ile profesyonel stüdyo miksajı kalitesinde geniş harmonik aralık, zengin enstrüman ayrışması ve kristal berraklığında vokaller.',
-                        specs: [
-                          _SpecItem(label: 'Üretim Hızı', value: '⚡⚡ ~45-60 sn (Yüksek Hassasiyet)'),
-                          _SpecItem(label: 'Minimum VRAM', value: '11.5 GB (RTX 3080/4080/4090)'),
-                          _SpecItem(label: 'Örnekleme', value: '48.0 kHz / 32-bit Studio Master'),
-                          _SpecItem(label: 'Kuantizasyon', value: 'BF16 Native (Kayıpsız)'),
+                      return Column(
+                        children: [
+                          for (int i = 0; i < installedList.length; i++) ...[
+                            if (i > 0) const SizedBox(height: 10),
+                            _buildInstalledModelItem(
+                              context: context,
+                              model: installedList[i],
+                              state: state,
+                              isDark: isDark,
+                            ),
+                          ],
                         ],
-                        onSelect: () {
-                          state.setSelectedModel('YuE2 Studio BF16');
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
 
-              // Footer: Link to Model Hub
+              // Bottom Banner: Open Model Hub & BYOM
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E1E28) : const Color(0xFFF8FAFC),
+                  color: isDark ? const Color(0xFF1A1A24) : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: borderColor),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF2E2E3E) : const Color(0xFFE2E8F0),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -223,198 +207,218 @@ class ModelSelectorDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildModelCard({
+  Widget _buildInstalledModelItem({
+    required BuildContext context,
+    required ModelInfo model,
+    required AppStateProvider state,
+    required bool isDark,
+  }) {
+    final low = '${model.id} ${model.name}'.toLowerCase();
+    String iconStr = '🎵';
+    String title = model.name;
+    String badgeText = model.recommended ? 'ÖNERİLEN' : 'YÜKLÜ';
+    Color badgeColor = const Color(0xFF6366F1);
+    String vramText = model.vramRequired.isNotEmpty ? model.vramRequired : '~6-8 GB VRAM';
+    Color vramColor = const Color(0xFF10B981);
+    String quickSpecs = '${model.speed} • ${model.size}';
+    String description = model.description;
+
+    if (low.contains('convrot') || low.contains('int8') || (low.contains('3b') && !low.contains('studio'))) {
+      iconStr = '⚡';
+      badgeText = 'ÖNERİLEN • ULTRA HIZLI';
+      badgeColor = const Color(0xFFF59E0B);
+      vramColor = const Color(0xFF10B981);
+      quickSpecs = '⚡ ~15-20 sn • 44.1 kHz 24-bit • INT8 Dynamic';
+    } else if (low.contains('7b')) {
+      iconStr = '👑';
+      badgeText = '7B TAM BOY • ÜSTÜN VOKAL';
+      badgeColor = const Color(0xFF8B5CF6);
+      vramColor = const Color(0xFFEC4899);
+      quickSpecs = '👑 ~35-50 sn • Akıcı Türkçe & İngilizce • Zengin Armoni';
+    } else if (low.contains('ace')) {
+      iconStr = '🚀';
+      badgeText = 'YENİ NESİL • VOKAL-BEAT UYUMU';
+      badgeColor = const Color(0xFF10B981);
+      vramColor = const Color(0xFF10B981);
+      quickSpecs = '🚀 ~12 sn • Güçlü Loudness • Sıkı Beat Senkronu';
+    } else if (low.contains('diff')) {
+      iconStr = '🌊';
+      badgeText = 'ARTIFACT-FREE • DİFÜZYON';
+      badgeColor = const Color(0xFF06B6D4);
+      vramColor = const Color(0xFF06B6D4);
+      quickSpecs = '🌊 ~10 sn • Sıfır Dijital Gürültü • End-to-End';
+    } else if (low.contains('studio') || low.contains('bf16')) {
+      iconStr = '🎛️';
+      badgeText = 'MASTERING KALİTE';
+      badgeColor = const Color(0xFF3B82F6);
+      vramColor = const Color(0xFF8B5CF6);
+      quickSpecs = '🎛️ Geniş Dinamik Aralık • Saf BF16';
+    }
+
+    final isSelected = TopModelSelectorBar.isModelSelected(state.selectedModel, model.id) ||
+        state.selectedModel.toLowerCase() == model.id.toLowerCase() ||
+        state.selectedModel.toLowerCase() == model.name.toLowerCase();
+
+    return _buildConciseModelCard(
+      context: context,
+      isDark: isDark,
+      isSelected: isSelected,
+      iconStr: iconStr,
+      title: title,
+      badgeText: badgeText,
+      badgeColor: badgeColor,
+      vramText: vramText,
+      vramColor: vramColor,
+      quickSpecs: quickSpecs,
+      description: description,
+      onSelect: () {
+        state.setSelectedModel(model.name);
+        Navigator.of(context).pop();
+      },
+    );
+  }
+
+  Widget _buildConciseModelCard({
     required BuildContext context,
     required bool isDark,
     required bool isSelected,
-    required String modelKey,
     required String iconStr,
-    required Color iconColor,
     required String title,
     required String badgeText,
     required Color badgeColor,
     required String vramText,
     required Color vramColor,
+    required String quickSpecs,
     required String description,
-    required List<_SpecItem> specs,
     required VoidCallback onSelect,
   }) {
-    final activeBorder = AppColors.primary;
-    final inactiveBorder = isDark ? const Color(0xFF2E2E3E) : const Color(0xFFE2E8F0);
+    final activeBorder = badgeColor;
+    final inactiveBorder = isDark ? const Color(0xFF262634) : const Color(0xFFE2E8F0);
     final cardBg = isSelected
-        ? (isDark ? const Color(0xFF1E1A29) : const Color(0xFFFFF7F2))
-        : (isDark ? const Color(0xFF1A1A22) : const Color(0xFFFAFAFB));
+        ? (isDark ? badgeColor.withValues(alpha: 0.14) : badgeColor.withValues(alpha: 0.08))
+        : (isDark ? const Color(0xFF181822) : const Color(0xFFFAFAFB));
 
     return InkWell(
       onTap: onSelect,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(16),
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: cardBg,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? activeBorder : inactiveBorder,
-            width: isSelected ? 1.8 : 1.0,
+            width: isSelected ? 1.6 : 1.0,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    color: badgeColor.withValues(alpha: 0.20),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ]
               : null,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            // Top Row: Icon + Title + Badges + Selection Check
-            Row(
-              children: [
-                Text(iconStr, style: const TextStyle(fontSize: 20)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                  decoration: BoxDecoration(
-                    color: badgeColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    badgeText,
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.bold,
-                      color: badgeColor,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
-                  decoration: BoxDecoration(
-                    color: vramColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    vramText,
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      color: vramColor,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // Radio indicator
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isSelected ? AppColors.primary : Colors.transparent,
-                    border: Border.all(
-                      color: isSelected ? AppColors.primary : (isDark ? Colors.white24 : Colors.black26),
-                      width: 2,
-                    ),
-                  ),
-                  child: isSelected
-                      ? const Icon(Icons.check_rounded, color: Colors.white, size: 13)
-                      : null,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            // Description
-            Text(
-              description,
-              style: TextStyle(
-                fontSize: 12,
-                height: 1.35,
-                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Technical Specs Grid
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF13131A) : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(10),
-              ),
+            Text(iconStr, style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 12),
+            Expanded(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
                     children: [
-                      Expanded(child: _buildSpecChip(specs[0], isDark)),
-                      const SizedBox(width: 8),
-                      Expanded(child: _buildSpecChip(specs[1], isDark)),
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          badgeText,
+                          style: TextStyle(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.bold,
+                            color: badgeColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: vramColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          vramText,
+                          style: TextStyle(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.bold,
+                            color: vramColor,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(child: _buildSpecChip(specs[2], isDark)),
-                      const SizedBox(width: 8),
-                      Expanded(child: _buildSpecChip(specs[3], isDark)),
-                    ],
+                  const SizedBox(height: 3),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    quickSpecs,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: badgeColor.withValues(alpha: 0.9),
+                    ),
                   ),
                 ],
               ),
+            ),
+            const SizedBox(width: 10),
+            // Radio Indicator
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? badgeColor : Colors.transparent,
+                border: Border.all(
+                  color: isSelected ? badgeColor : (isDark ? Colors.white24 : Colors.black26),
+                  width: 2,
+                ),
+              ),
+              child: isSelected
+                  ? const Icon(Icons.check_rounded, color: Colors.white, size: 13)
+                  : null,
             ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildSpecChip(_SpecItem item, bool isDark) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          '${item.label}: ',
-          style: TextStyle(
-            fontSize: 10.5,
-            fontWeight: FontWeight.w600,
-            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            item.value,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.bold,
-              color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SpecItem {
-  final String label;
-  final String value;
-  const _SpecItem({required this.label, required this.value});
 }

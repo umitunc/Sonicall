@@ -101,6 +101,14 @@ class SidebarWidget extends StatelessWidget {
           ),
           _buildNavItem(
             context,
+            icon: Icons.piano_rounded,
+            label: 'Enstrümana Dönüştür',
+            id: 'instrument',
+            isSelected: state.activeTab == 'instrument',
+            onTap: () => state.setActiveTab('instrument'),
+          ),
+          _buildNavItem(
+            context,
             icon: Icons.library_music_rounded,
             label: 'Kütüphanem',
             id: 'library',

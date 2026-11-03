@@ -313,6 +313,26 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
                           ],
                         ),
                       ),
+                      const SizedBox(width: 6),
+                      InkWell(
+                        onTap: () {
+                          final st = Provider.of<AppStateProvider>(context, listen: false);
+                          st.cancelTask(task.taskId);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 13,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -600,7 +620,7 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
-                            song.model,
+                            song.cleanModelName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(

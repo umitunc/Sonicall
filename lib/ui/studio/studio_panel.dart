@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/app_state_provider.dart';
-import '../dialogs/model_selector_dialog.dart';
 import '../dialogs/style_library_dialog.dart';
+import '../widgets/top_model_selector_bar.dart';
 
 class StudioPanel extends StatefulWidget {
   const StudioPanel({super.key});
@@ -102,18 +102,25 @@ class _StudioPanelState extends State<StudioPanel> {
               children: [
                 _buildCategoryTab(
                   context,
-                  label: '🎵 Şarkı (Songs)',
+                  label: '🎵 Şarkı',
                   selected: state.category == StudioCategory.songs,
                   onTap: () => state.setCategory(StudioCategory.songs),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
+                _buildCategoryTab(
+                  context,
+                  label: '🎻 Enstrüman',
+                  selected: false,
+                  onTap: () => state.setActiveTab('instrument'),
+                ),
+                const SizedBox(width: 6),
                 _buildCategoryTab(
                   context,
                   label: '🎙️ Konuşma',
                   selected: state.category == StudioCategory.speech,
                   onTap: () => state.setCategory(StudioCategory.speech),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _buildCategoryTab(
                   context,
                   label: '🔊 Efekt',
@@ -124,12 +131,15 @@ class _StudioPanelState extends State<StudioPanel> {
             ),
           ),
 
+          // Top Compact Model Selector Bar (Side-by-side concise cards)
+          const TopModelSelectorBar(),
+
           // Scrollable Form Content
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(18),
               children: [
-                // Mode Toggle & Model Selector Header
+                // Mode Toggle Header
                 Row(
                   children: [
                     // Simple / Advanced Switch
@@ -152,88 +162,6 @@ class _StudioPanelState extends State<StudioPanel> {
                             onTap: () => state.setMode(StudioMode.advanced),
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Model Selector Modal Button (Apple HIG Style - Opens Detailed Specs Dialog)
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Tooltip(
-                          message: 'Modeli ve teknik özellikleri değiştirmek için tıklayın',
-                          child: InkWell(
-                            onTap: () => ModelSelectorDialog.show(context),
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: isDark ? AppColors.darkCard : Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: borderColor),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    state.selectedModel == 'YuE2 Studio BF16' ? '💎' : '⚡',
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Flexible(
-                                    child: Text(
-                                      state.selectedModel == 'YuE2 Studio BF16'
-                                          ? 'YuE2 BF16'
-                                          : 'YuE2 INT8',
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: (state.selectedModel == 'YuE2 Studio BF16'
-                                              ? const Color(0xFF3B82F6)
-                                              : const Color(0xFF10B981))
-                                          .withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(5),
-                                    ),
-                                    child: Text(
-                                      state.selectedModel == 'YuE2 Studio BF16'
-                                          ? '12GB'
-                                          : '6GB',
-                                      style: TextStyle(
-                                        fontSize: 9.5,
-                                        fontWeight: FontWeight.bold,
-                                        color: state.selectedModel == 'YuE2 Studio BF16'
-                                            ? const Color(0xFF60A5FA)
-                                            : const Color(0xFF10B981),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Icon(
-                                    Icons.keyboard_arrow_down_rounded,
-                                    size: 16,
-                                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
                       ),
                     ),
                   ],
@@ -260,6 +188,13 @@ class _StudioPanelState extends State<StudioPanel> {
                           onPressed: () => state.clearReferenceAudio(),
                         ),
                       ],
+                      const SizedBox(width: 8),
+                      _buildActionChip(
+                        icon: Icons.piano_rounded,
+                        label: '🎻 Enstrümana Dönüştür',
+                        isActive: false,
+                        onTap: () => state.setActiveTab('instrument'),
+                      ),
                       const SizedBox(width: 8),
                       _buildActionChip(
                         icon: Icons.mic_external_on_rounded,
