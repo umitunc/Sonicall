@@ -7,6 +7,7 @@ backend_dir = str(Path(__file__).resolve().parent)
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
+import time
 import uuid
 import shutil
 import asyncio
@@ -26,6 +27,7 @@ from yue2_adapter import engine_adapter, get_db, save_db
 from comfy_bridge import comfy_bridge
 from audio_stems import extract_stems_for_song
 from sheet_music_generator import generate_sheet_music_pdf
+from audio_service import audio_service
 
 app = FastAPI(
     title="Sonicall AI Music Engine",
@@ -83,6 +85,9 @@ class SettingsUpdateRequest(BaseModel):
     selected_model: Optional[str] = None
     theme: Optional[str] = None
     auto_play: Optional[bool] = None
+
+class AudioAnalyzeRequest(BaseModel):
+    file_path: str
 
 @app.get("/")
 def root():
@@ -273,7 +278,7 @@ def open_stems_folder(song_id: str):
 
 @app.post("/api/upload")
 async def upload_audio(file: UploadFile = File(...)):
-    """Uploads reference audio for SheetSage2 Cover generation."""
+    """Uploads reference audio for SheetSage2 Cover & Instrument generation."""
     file_ext = Path(file.filename).suffix
     saved_filename = f"ref_{uuid.uuid4().hex[:8]}{file_ext}"
     saved_path = UPLOADS_DIR / saved_filename
@@ -281,12 +286,41 @@ async def upload_audio(file: UploadFile = File(...)):
     with open(saved_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
+    analysis = audio_service.analyze_audio_file(str(saved_path))
     return {
         "success": True,
         "filename": file.filename,
         "saved_path": str(saved_path),
-        "url": f"/output/uploads/{saved_filename}"
+        "url": f"/output/uploads/{saved_filename}",
+        "duration": analysis.get("duration", 0.0),
+        "duration_formatted": analysis.get("duration_formatted", "00:00"),
+        "bpm": analysis.get("bpm", 120)
     }
+
+@app.post("/api/audio/analyze")
+def analyze_audio(req: AudioAnalyzeRequest):
+    res = audio_service.analyze_audio_file(req.file_path)
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error"))
+    return res
+
+@app.post("/api/record/start")
+def start_mic_recording():
+    res = audio_service.start_recording()
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error"))
+    return res
+
+@app.post("/api/record/stop")
+def stop_mic_recording():
+    res = audio_service.stop_recording()
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error"))
+    return res
+
+@app.get("/api/record/status")
+def get_mic_recording_status():
+    return audio_service.get_status()
 
 @app.post("/api/generate")
 async def generate_song(req: GenerateRequest):
@@ -301,20 +335,55 @@ async def generate_song(req: GenerateRequest):
         "title": req.title
     }
 
+@app.get("/api/tasks")
+def get_all_tasks():
+    return engine_adapter.active_tasks
+
+@app.get("/api/tasks/{task_id}")
+def get_task_by_id(task_id: str):
+    task = engine_adapter.active_tasks.get(task_id)
+    if not task:
+        # Check if already completed in DB
+        db = get_db()
+        for s in db:
+            if s.get("id") == task_id:
+                return {
+                    "task_id": task_id,
+                    "status": "completed",
+                    "progress": 100,
+                    "message": "Şarkı hazır!",
+                    "song": s
+                }
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
 @app.websocket("/ws/generation")
 async def websocket_generation(websocket: WebSocket):
     await websocket.accept()
     q = asyncio.Queue()
     engine_adapter.subscribers.append(q)
+
+    # Immediately push existing active or recent tasks to catching-up client
+    try:
+        for tid, tinfo in list(engine_adapter.active_tasks.items()):
+            await websocket.send_json(tinfo)
+    except Exception:
+        pass
+
     try:
         while True:
-            # Send queued updates
-            msg = await q.get()
-            await websocket.send_json(msg)
+            try:
+                # Wait for queued updates with 10s timeout for heartbeat ping
+                msg = await asyncio.wait_for(q.get(), timeout=10.0)
+                await websocket.send_json(msg)
+            except asyncio.TimeoutError:
+                # Keepalive heartbeat ping
+                await websocket.send_json({"type": "ping", "time": time.time()})
     except WebSocketDisconnect:
-        if q in engine_adapter.subscribers:
-            engine_adapter.subscribers.remove(q)
+        pass
     except Exception:
+        pass
+    finally:
         if q in engine_adapter.subscribers:
             engine_adapter.subscribers.remove(q)
 

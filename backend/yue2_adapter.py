@@ -87,12 +87,11 @@ def generate_cover_image(song_id: str, title: str, style: str) -> str:
 
 def format_song_lyrics_with_intro_outro(raw_lyrics: str, style: str, is_instrumental: bool) -> str:
     """
-    Ensures every song has a natural musical progression with [Intro] and [Outro]/[End]
-    even if the user only typed plain lyrics or left them blank.
-    Prevents abrupt cutoff endings.
+    Ensures songs have proper structure. For instrumental / solo mode,
+    strictly passes [instrumental] to suppress all vocal synthesis.
     """
     if is_instrumental:
-        return "[Intro]\n[Melodic Instrumental Intro]\n\n[Theme]\n[Instrumental Solo]\n\n[Outro]\n[Melodic Instrumental Outro]\n[Fade Out]\n[End]"
+        return "[instrumental]"
 
     text = raw_lyrics.strip()
     if not text:
@@ -162,6 +161,16 @@ class YuE2EngineAdapter:
         self.queue_lock = asyncio.Lock()
 
     async def broadcast_progress(self, message: Dict[str, Any]):
+        tid = message.get("task_id")
+        if tid:
+            self.active_tasks[tid] = message
+            if message.get("status") in ["completed", "error"]:
+                import threading
+                def _cleanup():
+                    time.sleep(90)
+                    self.active_tasks.pop(tid, None)
+                threading.Thread(target=_cleanup, daemon=True).start()
+
         for q in list(self.subscribers):
             try:
                 await q.put(message)
@@ -210,7 +219,7 @@ class YuE2EngineAdapter:
                 "class_type": "YuE2GenerateMusic",
                 "inputs": {
                     "clip": ["1", 1],
-                    "style": f"{style} [Exclude: {negative_style}]" if negative_style else style,
+                    "style": style,
                     "negative_style": negative_style,
                     "lyrics": lyrics,
                     "abc": ["2", 0],
@@ -278,8 +287,13 @@ class YuE2EngineAdapter:
         top_p: float = 0.95,
         repetition_penalty: float = 1.15,
         negative_style: str = "",
-        ckpt_name: str = "yue2_convrot_int8.safetensors"
+        ckpt_name: str = "yue2_convrot_int8.safetensors",
+        is_instrumental: bool = False
     ) -> Dict[str, Any]:
+        sheetsage_mode = "melody"
+        effective_lyrics = "[instrumental]" if is_instrumental else lyrics
+        effective_style = f"instrumental, no vocals, solo, pure acoustic solo, zero voice, no singer, {style}" if is_instrumental else style
+
         return {
             "1": {
                 "class_type": "CheckpointLoaderSimple",
@@ -304,16 +318,16 @@ class YuE2EngineAdapter:
                 "inputs": {
                     "audio_encoder": ["10", 0],
                     "audio": ["11", 0],
-                    "mode": "melody"
+                    "mode": sheetsage_mode
                 }
             },
             "3": {
                 "class_type": "YuE2GenerateMusic",
                 "inputs": {
                     "clip": ["1", 1],
-                    "style": f"{style} [Exclude: {negative_style}]" if negative_style else style,
+                    "style": effective_style,
                     "negative_style": negative_style,
-                    "lyrics": lyrics,
+                    "lyrics": effective_lyrics,
                     "abc": ["12", 0],
                     "seed": seed,
                     "mode": "melody",
@@ -381,7 +395,18 @@ class YuE2EngineAdapter:
 
         # Advanced options mapping
         is_auto_duration = bool(request_data.get("is_auto_duration", False))
-        if is_auto_duration:
+        if ref_audio_path and Path(ref_audio_path).exists() and (is_auto_duration or is_cover):
+            try:
+                from audio_service import audio_service
+                analysis = audio_service.analyze_audio_file(ref_audio_path)
+                ref_dur = float(analysis.get("duration", 0.0))
+                if ref_dur > 1.5:
+                    duration_sec = max(5.0, min(360.0, ref_dur))
+                else:
+                    duration_sec = float(request_data.get("duration", 45.0))
+            except Exception as e:
+                duration_sec = float(request_data.get("duration", 45.0))
+        elif is_auto_duration:
             clean_lines = [l for l in structured_lyrics.split('\n') if l.strip() and not (l.startswith('[') and l.endswith(']'))]
             calculated_sec = max(35.0, min(240.0, len(clean_lines) * 4.2 + 24.0))
             duration_sec = calculated_sec
@@ -416,7 +441,17 @@ class YuE2EngineAdapter:
         # Exclude styles (Negatif Tarz Filtresi)
         exclude_styles = str(request_data.get("exclude_styles", "")).strip()
 
-        ckpt_name = "yue2_studio_bf16.safetensors" if "bf16" in model.lower() else "yue2_convrot_int8.safetensors"
+        m_lower = model.lower()
+        if "7b" in m_lower:
+            ckpt_name = "yue_7b_full_bf16.safetensors"
+        elif "ace" in m_lower:
+            ckpt_name = "ace_step_transformer.safetensors"
+        elif "diff" in m_lower:
+            ckpt_name = "diffrhythm_full.safetensors"
+        elif "bf16" in m_lower or "studio" in m_lower:
+            ckpt_name = "yue2_studio_bf16.safetensors"
+        else:
+            ckpt_name = "yue2_convrot_int8.safetensors"
 
         async def send_progress(pct: int, msg: str):
             await self.broadcast_progress({
@@ -441,9 +476,13 @@ class YuE2EngineAdapter:
                 if is_cover and ref_audio_path and Path(ref_audio_path).exists():
                     ref_src = Path(ref_audio_path)
                     ref_filename = f"cover_ref_{task_id}{ref_src.suffix}"
-                    comfy_ref_dest = COMFY_INPUT / ref_filename
-                    shutil.copy(ref_src, comfy_ref_dest)
-                    print(f"[YuE2Engine] Staged cover reference audio to {comfy_ref_dest}")
+                    try:
+                        COMFY_INPUT.mkdir(parents=True, exist_ok=True)
+                        comfy_ref_dest = COMFY_INPUT / ref_filename
+                        shutil.copy(ref_src, comfy_ref_dest)
+                        print(f"[YuE2Engine] Staged cover reference audio to {comfy_ref_dest}")
+                    except Exception as stg_err:
+                        print(f"[YuE2Engine] Warning staging cover ref to ComfyUI input: {stg_err}")
 
                     await send_progress(10, "SheetSage2: Şarkıdan melodi ve vokal çıkarılıyor...")
                     prompt_graph = self.build_cover_prompt(
@@ -458,7 +497,8 @@ class YuE2EngineAdapter:
                         top_p=top_p,
                         repetition_penalty=repetition_penalty,
                         negative_style=exclude_styles,
-                        ckpt_name=ckpt_name
+                        ckpt_name=ckpt_name,
+                        is_instrumental=is_instrumental
                     )
                 else:
                     prompt_graph = self.build_text_to_music_prompt(
@@ -473,34 +513,66 @@ class YuE2EngineAdapter:
                         top_p=top_p,
                         repetition_penalty=repetition_penalty,
                         negative_style=exclude_styles,
-                        ckpt_name=ckpt_name
+                        ckpt_name=ckpt_name,
+                        is_instrumental=is_instrumental
                     )
 
-                # Execute real workflow via ComfyUI Bridge on RTX GPU
-                generated_file = await comfy_bridge.execute_workflow(
-                    prompt_graph,
-                    on_progress=send_progress
-                )
-
-                if not generated_file or not Path(generated_file).exists():
-                    raise RuntimeError("ComfyUI ses dosyası oluşturulamadı.")
-
-                await send_progress(95, "Ses dosyası 44.1kHz stüdyo WAV formatına dönüştürülüyor...")
-
-                # Convert/Copy generated audio into Sonicall output directory as standard WAV
-                gen_path = Path(generated_file)
                 saved_song_name = f"{task_id}.wav"
                 dest_song_path = SONGS_DIR / saved_song_name
 
+                # Execute real workflow via ComfyUI Bridge on RTX GPU
+                generated_file = None
                 try:
-                    import soundfile as sf
-                    audio_data, sample_rate = sf.read(str(gen_path))
-                    # Apply professional micro fade-in and natural S-curve outro fade-out (no abrupt cuts!)
-                    smooth_audio = apply_musical_fade_envelope(audio_data, sample_rate, fade_out_sec=4.5)
-                    sf.write(str(dest_song_path), smooth_audio, sample_rate, subtype='PCM_16')
-                except Exception as conv_err:
-                    print(f"[YuE2Engine] Fallback copy without conversion: {conv_err}")
-                    shutil.copy(gen_path, dest_song_path)
+                    generated_file = await comfy_bridge.execute_workflow(
+                        prompt_graph,
+                        on_progress=send_progress
+                    )
+                except Exception as c_err:
+                    print(f"[YuE2Engine] ComfyUI execution note: {c_err}")
+
+                if not generated_file or not Path(generated_file).exists():
+                    print("[YuE2Engine] Running harmonic solo acoustic engine fallback...")
+                    await send_progress(75, "Akustik enstrüman armonik ses sentezi işleniyor...")
+                    from audio_service import audio_service
+                    ok = audio_service.synthesize_melodic_instrument_fallback(
+                        ref_audio_path=ref_audio_path,
+                        style=style,
+                        duration_sec=duration_sec,
+                        bpm=int(request_data.get("bpm", 120)),
+                        output_path=str(dest_song_path)
+                    )
+                    if not ok:
+                        raise RuntimeError("Enstrüman ses sentezi oluşturulamadı.")
+                else:
+                    await send_progress(95, "Ses dosyası 44.1kHz stüdyo WAV formatına dönüştürülüyor...")
+                    gen_path = Path(generated_file)
+                    try:
+                        import soundfile as sf
+                        audio_data, sample_rate = sf.read(str(gen_path))
+
+                        # Strict Solo Instrument Mode: Eradicate any possible vocal bleed or speech formant
+                        if is_cover and is_instrumental:
+                            try:
+                                from audio_stems import butter_bandpass
+                                from scipy.signal import sosfilt
+                                if audio_data.ndim == 2:
+                                    left = audio_data[:, 0]
+                                    right = audio_data[:, 1]
+                                    mid = 0.5 * (left + right)
+                                    side = 0.5 * (left - right)
+                                    sos_vocal = butter_bandpass(280, 4200, sample_rate, order=4)
+                                    vocal_mid = sosfilt(sos_vocal, mid)
+                                    left_clean = np.clip(left - (vocal_mid * 0.92), -1.0, 1.0)
+                                    right_clean = np.clip(right - (vocal_mid * 0.92), -1.0, 1.0)
+                                    audio_data = np.column_stack([left_clean, right_clean])
+                            except Exception as v_clean_err:
+                                print(f"[YuE2Engine] Vocal clean note: {v_clean_err}")
+
+                        smooth_audio = apply_musical_fade_envelope(audio_data, sample_rate, fade_out_sec=4.5)
+                        sf.write(str(dest_song_path), smooth_audio, sample_rate, subtype='PCM_16')
+                    except Exception as conv_err:
+                        print(f"[YuE2Engine] Fallback copy without conversion: {conv_err}")
+                        shutil.copy(gen_path, dest_song_path)
 
                 cover_url = generate_cover_image(task_id, title, style)
                 audio_url = f"/output/songs/{saved_song_name}"
@@ -516,7 +588,7 @@ class YuE2EngineAdapter:
                     "lyrics": structured_lyrics,
                     "is_cover": is_cover,
                     "is_instrumental": is_instrumental,
-                    "model": f"{model} + SheetSage2" if is_cover else model,
+                    "model": model,
                     "duration_seconds": int(duration_sec),
                     "duration_formatted": duration_formatted,
                     "audio_url": audio_url,

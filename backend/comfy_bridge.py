@@ -11,10 +11,29 @@ from typing import Optional, Dict, Any, Callable, Coroutine
 import requests
 import websocket
 
-COMFY_DIR = Path(r"D:\Works\2026\AI FILMMAKING\ComfyUI")
+candidate_dirs = [
+    Path(r"D:\Works\2026\ComfyUI\ComfyUI"),
+    Path(r"D:\Works\2026\ComfyUI"),
+    Path(r"D:\Works\2026\AI FILMMAKING\ComfyUI")
+]
+COMFY_DIR = candidate_dirs[0]
+for d in candidate_dirs:
+    if d.exists():
+        COMFY_DIR = d
+        break
+
 COMFY_PYTHON = COMFY_DIR / ".venv" / "Scripts" / "python.exe"
+if not COMFY_PYTHON.exists():
+    COMFY_PYTHON = Path(sys.executable)
+
 COMFY_INPUT = COMFY_DIR / "input"
 COMFY_OUTPUT = COMFY_DIR / "output" / "audio"
+try:
+    COMFY_INPUT.mkdir(parents=True, exist_ok=True)
+    COMFY_OUTPUT.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
+
 COMFY_HTTP = "http://127.0.0.1:8188"
 COMFY_WS = "ws://127.0.0.1:8188/ws"
 
