@@ -82,6 +82,16 @@ class ModelHubDialog extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.folder_outlined, size: 13),
+                    label: const Text('Klasör Değiştir', style: TextStyle(fontSize: 11)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: () => state.pickNewModelsDir(),
+                  ),
                 ],
               ),
             ),
@@ -97,6 +107,7 @@ class ModelHubDialog extends StatelessWidget {
                         final m = state.models[index];
                         final downloadInfo = state.downloads[m.id];
                         final isDownloading = downloadInfo != null && downloadInfo['status'] == 'downloading';
+                        final isFailed = downloadInfo != null && downloadInfo['status'] == 'failed';
                         final double progress = (downloadInfo != null && downloadInfo['progress'] != null)
                             ? (downloadInfo['progress'] as num).toDouble()
                             : 0.0;
@@ -206,13 +217,28 @@ class ModelHubDialog extends StatelessWidget {
                                             color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                                           ),
                                         ),
-                                        if (m.installed)
+                                        if (m.description.isNotEmpty) ...[
+                                          const SizedBox(height: 3),
                                           Text(
-                                            'Boyut: ${m.size} • Dosya bulundu',
-                                            style: const TextStyle(
+                                            m.description,
+                                            style: TextStyle(
                                               fontSize: 10.5,
-                                              color: Color(0xFF10B981),
-                                              fontWeight: FontWeight.w600,
+                                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                        if (m.installed)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 2),
+                                            child: Text(
+                                              'Boyut: ${m.size} • Dosya bulundu',
+                                              style: const TextStyle(
+                                                fontSize: 10.5,
+                                                color: Color(0xFF10B981),
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
                                       ],
@@ -361,6 +387,31 @@ class ModelHubDialog extends StatelessWidget {
                                         ),
                                       ),
                                   ],
+                                ),
+                              ],
+
+                              // Real Download Failure Banner
+                              if (isFailed) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.error_outline_rounded, size: 14, color: Colors.redAccent),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          message.isNotEmpty ? message : 'İndirme tamamlanamadı.',
+                                          style: const TextStyle(fontSize: 10.5, color: Colors.redAccent),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ],

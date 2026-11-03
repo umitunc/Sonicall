@@ -16,6 +16,12 @@ class Song {
   final Map<String, String>? stems;
   final String? sheetMusicUrl;
 
+  String get cleanModelName {
+    var m = model.replaceAll(RegExp(r'\s*\+\s*SheetSage2', caseSensitive: false), '').trim();
+    if (m.isEmpty) return 'YuE 3B INT8';
+    return m;
+  }
+
   Song({
     required this.id,
     required this.title,
@@ -87,6 +93,7 @@ class ModelInfo {
   final String id;
   final String name;
   final String type;
+  final String description;
   final bool installed;
   final String path;
   final String size;
@@ -98,6 +105,7 @@ class ModelInfo {
     required this.id,
     required this.name,
     required this.type,
+    this.description = '',
     required this.installed,
     required this.path,
     required this.size,
@@ -111,6 +119,7 @@ class ModelInfo {
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       type: json['type'] ?? '',
+      description: json['description'] ?? '',
       installed: json['installed'] ?? false,
       path: json['path'] ?? '',
       size: json['size'] ?? '0 B',

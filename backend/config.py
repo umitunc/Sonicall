@@ -15,7 +15,15 @@ SETTINGS_FILE = BASE_DIR / "backend" / "settings.json"
 for d in [OUTPUT_DIR, SONGS_DIR, COVERS_DIR, UPLOADS_DIR, STEMS_DIR, SHEETS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
-DEFAULT_COMFYUI_MODELS_PATH = r"D:\Works\2026\AI FILMMAKING\ComfyUI\models"
+candidate_model_dirs = [
+    Path(r"D:\Works\2026\ComfyUI\ComfyUI\models"),
+    Path(r"D:\Works\2026\ComfyUI\models"),
+]
+DEFAULT_COMFYUI_MODELS_PATH = str(candidate_model_dirs[0])
+for d in candidate_model_dirs:
+    if d.exists():
+        DEFAULT_COMFYUI_MODELS_PATH = str(d)
+        break
 PORT = 5824
 HOST = "127.0.0.1"
 
