@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/app_state_provider.dart';
+import '../dialogs/model_selector_dialog.dart';
+import '../dialogs/style_library_dialog.dart';
 
 class StudioPanel extends StatefulWidget {
   const StudioPanel({super.key});
@@ -152,217 +154,85 @@ class _StudioPanelState extends State<StudioPanel> {
                         ],
                       ),
                     ),
-                    const Spacer(),
-                    // Model Dropdown Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkCard : Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: borderColor),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: state.selectedModel,
-                          isDense: true,
-                          dropdownColor: isDark ? const Color(0xFF1E1E26) : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          icon: const Icon(Icons.arrow_drop_down_rounded, size: 18),
-                          selectedItemBuilder: (BuildContext context) {
-                            return [
-                              Row(
+                    const SizedBox(width: 8),
+                    // Model Selector Modal Button (Apple HIG Style - Opens Detailed Specs Dialog)
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Tooltip(
+                          message: 'Modeli ve teknik özellikleri değiştirmek için tıklayın',
+                          child: InkWell(
+                            onTap: () => ModelSelectorDialog.show(context),
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.darkCard : Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: borderColor),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Text('⚡', style: TextStyle(fontSize: 12)),
-                                  const SizedBox(width: 5),
                                   Text(
-                                    'YuE2 3B INT8',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                                    state.selectedModel == 'YuE2 Studio BF16' ? '💎' : '⚡',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Flexible(
+                                    child: Text(
+                                      state.selectedModel == 'YuE2 Studio BF16'
+                                          ? 'YuE2 BF16'
+                                          : 'YuE2 INT8',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
                                     ),
                                   ),
                                   const SizedBox(width: 6),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(4),
+                                      color: (state.selectedModel == 'YuE2 Studio BF16'
+                                              ? const Color(0xFF3B82F6)
+                                              : const Color(0xFF10B981))
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(5),
                                     ),
-                                    child: const Text(
-                                      'Hızlı • 6GB',
+                                    child: Text(
+                                      state.selectedModel == 'YuE2 Studio BF16'
+                                          ? '12GB'
+                                          : '6GB',
                                       style: TextStyle(
-                                        fontSize: 9,
+                                        fontSize: 9.5,
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFF10B981),
+                                        color: state.selectedModel == 'YuE2 Studio BF16'
+                                            ? const Color(0xFF60A5FA)
+                                            : const Color(0xFF10B981),
                                       ),
                                     ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    size: 16,
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                                   ),
                                 ],
                               ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text('💎', style: TextStyle(fontSize: 12)),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    'YuE2 Studio BF16',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      'Mastering • 12GB',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF3B82F6),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ];
-                          },
-                          items: [
-                            DropdownMenuItem(
-                              value: 'YuE2 3B INT8',
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 6),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Text('⚡', style: TextStyle(fontSize: 14)),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'YuE2 3B INT8 ConvRot',
-                                          style: TextStyle(
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.bold,
-                                            color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary.withValues(alpha: 0.18),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: const Text(
-                                            'ÖNERİLEN',
-                                            style: TextStyle(
-                                              color: AppColors.primary,
-                                              fontSize: 8.5,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                        const Spacer(),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                          decoration: BoxDecoration(
-                                            color: isDark ? Colors.white10 : Colors.black12,
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: const Text(
-                                            '~6 GB VRAM',
-                                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      '⚡⚡⚡ Ultra Hızlı Sentez • Düşük Gecikme • Günlük Hızlı Taslak & Prodüksiyon',
-                                      style: TextStyle(
-                                        fontSize: 10.5,
-                                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
                             ),
-                            DropdownMenuItem(
-                              value: 'YuE2 Studio BF16',
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 6),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Text('💎', style: TextStyle(fontSize: 14)),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'YuE2 Studio BF16',
-                                          style: TextStyle(
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.bold,
-                                            color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: const Text(
-                                            'MASTERING',
-                                            style: TextStyle(
-                                              color: Color(0xFF60A5FA),
-                                              fontSize: 8.5,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                        const Spacer(),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                          decoration: BoxDecoration(
-                                            color: isDark ? Colors.white10 : Colors.black12,
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: const Text(
-                                            '~12 GB VRAM',
-                                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      '⚡⚡ Yüksek Dinamik Aralık • Kristal Vokal Harmonikleri & Zengin Akustik Tını',
-                                      style: TextStyle(
-                                        fontSize: 10.5,
-                                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                          onChanged: (val) {
-                            if (val != null) state.setSelectedModel(val);
-                          },
+                          ),
                         ),
                       ),
                     ),
@@ -372,43 +242,46 @@ class _StudioPanelState extends State<StudioPanel> {
                 const SizedBox(height: 16),
 
                 // Quick Action Chips: + Audio (Cover), + Voice, + Inspo
-                Row(
-                  children: [
-                    _buildActionChip(
-                      icon: Icons.audio_file_rounded,
-                      label: state.isCover ? 'Cover: ${state.refAudioName}' : '+ Audio (Cover)',
-                      isActive: state.isCover,
-                      onTap: () => state.pickReferenceAudio(),
-                    ),
-                    if (state.isCover) ...[
-                      const SizedBox(width: 4),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 16),
-                        tooltip: 'Cover Referansını Kaldır',
-                        onPressed: () => state.clearReferenceAudio(),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildActionChip(
+                        icon: Icons.audio_file_rounded,
+                        label: state.isCover ? 'Cover: ${state.refAudioName}' : '+ Audio (Cover)',
+                        isActive: state.isCover,
+                        onTap: () => state.pickReferenceAudio(),
+                      ),
+                      if (state.isCover) ...[
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 16),
+                          tooltip: 'Cover Referansını Kaldır',
+                          onPressed: () => state.clearReferenceAudio(),
+                        ),
+                      ],
+                      const SizedBox(width: 8),
+                      _buildActionChip(
+                        icon: Icons.mic_external_on_rounded,
+                        label: '+ Vokal',
+                        isActive: false,
+                        onTap: () {
+                          _styleController.text += ', Güçlü Kadın Vokal, Reverb';
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      _buildActionChip(
+                        icon: Icons.auto_awesome_rounded,
+                        label: '+ İlham',
+                        isActive: false,
+                        onTap: () {
+                          _styleController.text = '80s Synthwave, Nostalgic Synth, Driving Bass, Analog Drums';
+                          _titleController.text = 'Gece Sürüşü';
+                          _lyricsController.text = '[Intro]\n(Sentezleyici dalgaları ve 120 BPM tempo)\n\n[Verse 1]\nNeon ışıklar altında bir şehir\nGecenin içinde kaybolan anılar...';
+                        },
                       ),
                     ],
-                    const SizedBox(width: 8),
-                    _buildActionChip(
-                      icon: Icons.mic_external_on_rounded,
-                      label: '+ Vokal',
-                      isActive: false,
-                      onTap: () {
-                        _styleController.text += ', Güçlü Kadın Vokal, Reverb';
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    _buildActionChip(
-                      icon: Icons.auto_awesome_rounded,
-                      label: '+ İlham',
-                      isActive: false,
-                      onTap: () {
-                        _styleController.text = '80s Synthwave, Nostalgic Synth, Driving Bass, Analog Drums';
-                        _titleController.text = 'Gece Sürüşü';
-                        _lyricsController.text = '[Intro]\n(Sentezleyici dalgaları ve 120 BPM tempo)\n\n[Verse 1]\nNeon ışıklar altında bir şehir\nGecenin içinde kaybolan anılar...';
-                      },
-                    ),
-                  ],
+                  ),
                 ),
 
                 if (state.isCover) ...[
@@ -464,16 +337,20 @@ class _StudioPanelState extends State<StudioPanel> {
                 // Lyrics Header & Instrumental Switch
                 Row(
                   children: [
-                    Text(
-                      'ŞARKI SÖZLERİ (LYRICS)',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                        color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                    Expanded(
+                      child: Text(
+                        'ŞARKI SÖZLERİ (LYRICS)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     Text(
                       'Enstrümantal',
                       style: TextStyle(
@@ -527,20 +404,29 @@ class _StudioPanelState extends State<StudioPanel> {
                       border: Border.all(color: borderColor),
                     ),
                     child: Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.music_note_rounded, size: 20, color: AppColors.primary),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Enstrümantal Mod Seçildi (Vokal söylenmeyecek)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                              fontStyle: FontStyle.italic,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.music_note_rounded, size: 20, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'Enstrümantal Mod Seçildi (Vokal söylenmeyecek)',
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -548,15 +434,67 @@ class _StudioPanelState extends State<StudioPanel> {
 
                 const SizedBox(height: 18),
 
-                // Style of Music
-                Text(
-                  'MÜZİK TARZI & ENSTRÜMANLAR (STYLE)',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                    color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                  ),
+                // Style of Music Header (with Suno-style Library & History Trigger)
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'MÜZİK TARZI & ENSTRÜMANLAR',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Tooltip(
+                      message: 'Müzik tarzı kütüphanesini ve otomatik geçmişi aç',
+                      child: InkWell(
+                        onTap: () {
+                          StyleLibraryDialog.show(
+                            context,
+                            currentStyleText: _styleController.text,
+                            onStyleSelected: (newStyle) {
+                              setState(() {
+                                _styleController.text = newStyle;
+                              });
+                              state.setStyle(newStyle);
+                            },
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.library_music_rounded, size: 13, color: AppColors.primary),
+                              SizedBox(width: 4),
+                              Text(
+                                'Kütüphane & Geçmiş',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 TextField(
@@ -569,37 +507,88 @@ class _StudioPanelState extends State<StudioPanel> {
                 ),
                 const SizedBox(height: 8),
 
-                // Genre Pills
+                // Genre Pills & Explore Button
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: _genrePills.map((genre) {
-                    return InkWell(
+                  children: [
+                    // Highlighted Library & History Pill
+                    InkWell(
                       borderRadius: BorderRadius.circular(14),
                       onTap: () {
-                        if (_styleController.text.isEmpty) {
-                          _styleController.text = genre;
-                        } else if (!_styleController.text.contains(genre)) {
-                          _styleController.text += ', $genre';
-                        }
+                        StyleLibraryDialog.show(
+                          context,
+                          currentStyleText: _styleController.text,
+                          onStyleSelected: (newStyle) {
+                            setState(() {
+                              _styleController.text = newStyle;
+                            });
+                            state.setStyle(newStyle);
+                          },
+                        );
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkCard : const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: borderColor),
-                        ),
-                        child: Text(
-                          genre,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFF5E3A), Color(0xFFFF2A68)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.25),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.auto_awesome_rounded, size: 12, color: Colors.white),
+                            SizedBox(width: 4),
+                            Text(
+                              'Tarzları Keşfet',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    );
-                  }).toList(),
+                    ),
+                    ..._genrePills.map((genre) {
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          if (_styleController.text.isEmpty) {
+                            _styleController.text = genre;
+                          } else if (!_styleController.text.contains(genre)) {
+                            _styleController.text += ', $genre';
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.darkCard : const Color(0xFFF3F4F6),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: Text(
+                            genre,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
                 ),
 
                 const SizedBox(height: 20),
@@ -710,7 +699,7 @@ class _StudioPanelState extends State<StudioPanel> {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: state.isGenerating ? null : () => state.startGeneration(),
+                    onPressed: () => state.startGeneration(),
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.zero,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -719,10 +708,8 @@ class _StudioPanelState extends State<StudioPanel> {
                     ),
                     child: Ink(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: state.isGenerating
-                              ? [Colors.grey.shade700, Colors.grey.shade600]
-                              : [AppColors.primary, AppColors.secondary],
+                        gradient: const LinearGradient(
+                          colors: [AppColors.primary, AppColors.secondary],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
@@ -741,7 +728,7 @@ class _StudioPanelState extends State<StudioPanel> {
                             const SizedBox(width: 8),
                             Text(
                               state.isGenerating
-                                  ? 'Şarkı Üretiliyor (${state.generationProgress}%)'
+                                  ? '+ Sıraya Ekle (${state.activeTasks.length} Kuyrukta)'
                                   : (state.isCover
                                       ? 'Cover Şarkı Üret (${state.isAutoDuration ? "Auto" : _formatDuration(state.duration)})'
                                       : 'Şarkı Üret (${state.isAutoDuration ? "Auto" : _formatDuration(state.duration)})'),
@@ -797,11 +784,15 @@ class _StudioPanelState extends State<StudioPanel> {
                     size: 22,
                   ),
                   const SizedBox(width: 4),
-                  const Text(
-                    'More Options (Süre & İnce Ayarlar)',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  const Expanded(
+                    child: Text(
+                      'More Options (İnce Ayarlar)',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
@@ -1126,16 +1117,26 @@ class _StudioPanelState extends State<StudioPanel> {
   }) {
     return Row(
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+        Expanded(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Tooltip(
+                message: tooltip,
+                child: const Icon(Icons.info_outline_rounded, size: 14, color: Colors.grey),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(width: 4),
-        Tooltip(
-          message: tooltip,
-          child: const Icon(Icons.info_outline_rounded, size: 14, color: Colors.grey),
-        ),
-        const Spacer(),
+        const SizedBox(width: 8),
         trailing,
       ],
     );
@@ -1177,25 +1178,31 @@ class _StudioPanelState extends State<StudioPanel> {
     required VoidCallback onTap,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected
-              ? (isDark ? const Color(0xFF26262E) : const Color(0xFFE5E7EB))
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
             color: selected
-                ? (isDark ? Colors.white : AppColors.lightTextPrimary)
-                : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                ? (isDark ? const Color(0xFF26262E) : const Color(0xFFE5E7EB))
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+              color: selected
+                  ? (isDark ? Colors.white : AppColors.lightTextPrimary)
+                  : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+            ),
           ),
         ),
       ),
@@ -1251,12 +1258,17 @@ class _StudioPanelState extends State<StudioPanel> {
           children: [
             Icon(icon, size: 14, color: isActive ? AppColors.primary : Colors.grey),
             const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                color: isActive ? AppColors.primary : Colors.grey,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                  color: isActive ? AppColors.primary : Colors.grey,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
