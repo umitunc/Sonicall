@@ -146,3 +146,29 @@ class GenerationProgressEvent {
     );
   }
 }
+
+class GenerationTask {
+  String taskId;
+  final String title;
+  final String style;
+  final String model;
+  final bool isCover;
+  final bool isInstrumental;
+  int progress;
+  String status; // 'queued', 'processing', 'completed', 'error'
+  String message;
+  final DateTime createdAt;
+
+  GenerationTask({
+    required this.taskId,
+    required this.title,
+    required this.style,
+    required this.model,
+    required this.isCover,
+    required this.isInstrumental,
+    this.progress = 5,
+    this.status = 'processing',
+    this.message = 'Sıraya alındı...',
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
+}

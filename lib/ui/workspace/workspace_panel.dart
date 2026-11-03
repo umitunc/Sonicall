@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/legacy.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/song_model.dart';
 import '../../providers/app_state_provider.dart';
 import '../dialogs/stems_dialog.dart';
+import '../widgets/window_controls.dart';
 
 class WorkspacePanel extends StatefulWidget {
   const WorkspacePanel({super.key});
@@ -33,41 +35,55 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
       color: panelBg,
       child: Column(
         children: [
-          // Top Header & Breadcrumbs
+          // Top Header & Breadcrumbs & In-App Window Controls
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            height: 48,
+            padding: const EdgeInsets.only(left: 20, right: 0),
             decoration: BoxDecoration(
               color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
               border: Border(bottom: BorderSide(color: borderColor, width: 1)),
             ),
             child: Row(
               children: [
-                Icon(Icons.folder_shared_rounded, size: 18, color: AppColors.primary),
-                const SizedBox(width: 8),
-                Text(
-                  'Çalışma Alanı',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                Expanded(
+                  child: DragToMoveArea(
+                    child: Container(
+                      color: Colors.transparent,
+                      child: Row(
+                        children: [
+                          Icon(Icons.folder_shared_rounded, size: 18, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Çalışma Alanı',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Kütüphanem (My Workspace)',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                            ),
+                          ),
+                          const Spacer(),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 6),
-                const Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey),
-                const SizedBox(width: 6),
-                Text(
-                  'Kütüphanem (My Workspace)',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                  ),
-                ),
-                const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.refresh_rounded, size: 20),
+                  icon: const Icon(Icons.refresh_rounded, size: 19),
                   tooltip: 'Yenile',
                   onPressed: () => state.refreshSongs(),
                 ),
+                const SizedBox(width: 4),
+                const WindowControlsWidget(height: 48),
               ],
             ),
           ),
@@ -117,12 +133,12 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
 
           // Songs List
           Expanded(
-            child: state.songs.isEmpty
+            child: (state.songs.isEmpty && state.activeTasks.isEmpty)
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.queue_music_rounded, size: 52, color: Colors.grey.withOpacity(0.4)),
+                        Icon(Icons.queue_music_rounded, size: 52, color: Colors.grey.withValues(alpha: 0.4)),
                         const SizedBox(height: 12),
                         Text(
                           'Henüz şarkı bulunamadı',
@@ -145,9 +161,17 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    itemCount: state.songs.length,
+                    itemCount: state.activeTasks.length + state.songs.length,
                     itemBuilder: (context, index) {
-                      final song = state.songs[index];
+                      // 1. Show Active Queued/Processing Tasks at top (Suno Queue)
+                      if (index < state.activeTasks.length) {
+                        final task = state.activeTasks[index];
+                        return _buildSkeletonCard(context, task, isDark);
+                      }
+
+                      // 2. Show Completed Songs
+                      final songIndex = index - state.activeTasks.length;
+                      final song = state.songs[songIndex];
                       final isCurrent = state.audio.currentSong?.id == song.id;
                       final isPlaying = isCurrent && state.audio.isPlaying;
 
@@ -186,6 +210,169 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
     );
   }
 
+  Widget _buildSkeletonCard(BuildContext context, GenerationTask task, bool isDark) {
+    final cardBg = isDark ? const Color(0xFF181820) : const Color(0xFFF9FAFB);
+    final isQueued = task.status == 'queued';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isQueued
+              ? (isDark ? AppColors.darkBorder : AppColors.lightBorder)
+              : AppColors.primary.withValues(alpha: 0.65),
+          width: isQueued ? 1.0 : 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isQueued
+                ? Colors.transparent
+                : AppColors.primary.withValues(alpha: 0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Skeleton Cover with pulsing gradient and spinner
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                gradient: LinearGradient(
+                  colors: isQueued
+                      ? [const Color(0xFF2C2C34), const Color(0xFF1E1E24)]
+                      : [const Color(0xFFFF6A00), const Color(0xFFEE0979)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Center(
+                child: SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    value: isQueued ? null : (task.progress > 5 ? task.progress / 100.0 : null),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+
+            // Middle Info & Realtime Progress Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          task.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isQueued
+                              ? Colors.grey.withValues(alpha: 0.2)
+                              : AppColors.primary.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (!isQueued)
+                              const Icon(Icons.sync_rounded, size: 11, color: AppColors.primary),
+                            if (!isQueued) const SizedBox(width: 3),
+                            Text(
+                              isQueued ? 'SIRADA' : 'ÜRETİLİYOR',
+                              style: TextStyle(
+                                color: isQueued ? Colors.grey : AppColors.primary,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${task.style} • ${task.model}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Suno Progress Bar
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: isQueued ? null : (task.progress / 100.0).clamp(0.0, 1.0),
+                      minHeight: 5,
+                      backgroundColor: isDark ? Colors.black45 : Colors.grey.shade200,
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          task.message,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                          ),
+                        ),
+                      ),
+                      if (!isQueued)
+                        Text(
+                          '%${task.progress}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSongCard(
     BuildContext context,
     Song song,
@@ -207,7 +394,7 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
         border: Border.all(color: borderColor, width: isCurrent ? 1.5 : 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -216,6 +403,7 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: () {
+          state.markSongRead(song.id);
           if (isCurrent) {
             state.audio.togglePlayPause();
           } else {
@@ -227,6 +415,25 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Suno Pink "NEW" Dot Indicator (media_1793667497586_f75be0ec.png)
+              if (state.isSongNew(song.id))
+                Container(
+                  width: 7,
+                  height: 7,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEE0979),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xAAEE0979),
+                        blurRadius: 6,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                ),
+
               // Artwork Thumbnail with Play button overlay
               Stack(
                 alignment: Alignment.center,
