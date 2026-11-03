@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Sonicall Signature Brand Gradient -->
+    <linearGradient id="sonicallGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6A00"/>
+      <stop offset="50%" stop-color="#FF3366"/>
+      <stop offset="100%" stop-color="#EE0979"/>
+    </linearGradient>
+
+    <!-- Glossy HIG Top Highlight -->
+    <linearGradient id="topGleam" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="35%" stop-color="#FFFFFF" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Inner Squircle Bevel Border -->
+    <linearGradient id="innerBorder" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.15"/>
+    </linearGradient>
+
+    <!-- Subtle Drop Shadow for Glyphs -->
+    <filter id="appleShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#70002A" flood-opacity="0.32"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000000" flood-opacity="0.15"/>
+    </filter>
+
+    <filter id="glowPulse" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Apple HIG Squircle Base (Curvature rx=115 for 512px) -->
+  <rect width="512" height="512" rx="115" ry="115" fill="url(#sonicallGradient)"/>
+
+  <!-- Top Glass Sheen -->
+  <rect width="512" height="512" rx="115" ry="115" fill="url(#topGleam)"/>
+
+  <!-- Inner Stroke / Rim Highlight -->
+  <rect x="2" y="2" width="508" height="508" rx="114" ry="114" fill="none" stroke="url(#innerBorder)" stroke-width="3"/>
+
+  <!-- Sound Waves (Left & Right Beats) -->
+  <g fill="#FFFFFF" opacity="0.85" filter="url(#appleShadow)">
+    <!-- Left Soundwaves -->
+    <rect x="74" y="246" width="7" height="20" rx="3.5"/>
+    <rect x="91" y="232" width="7" height="48" rx="3.5"/>
+    <rect x="108" y="218" width="7" height="76" rx="3.5"/>
+    <rect x="125" y="236" width="7" height="40" rx="3.5"/>
+
+    <!-- Right Soundwaves -->
+    <rect x="380" y="236" width="7" height="40" rx="3.5"/>
+    <rect x="397" y="218" width="7" height="76" rx="3.5"/>
+    <rect x="414" y="232" width="7" height="48" rx="3.5"/>
+    <rect x="431" y="246" width="7" height="20" rx="3.5"/>
+  </g>
+
+  <!-- Central Audio Lightning Motif -->
+  <g filter="url(#appleShadow)">
+    <!-- Headphone Arch (Cushioned Headband) -->
+    <path d="M 172 260 C 172 150, 340 150, 340 260" 
+          fill="none" 
+          stroke="#FFFFFF" 
+          stroke-width="18" 
+          stroke-linecap="round"/>
+    
+    <!-- Headband Inner Cushion Accent -->
+    <path d="M 200 200 C 220 180, 292 180, 312 200" 
+          fill="none" 
+          stroke="#FFFFFF" 
+          stroke-width="6" 
+          stroke-linecap="round" 
+          opacity="0.4"/>
+
+    <!-- Ear Cups (Over-Ear Studio Style) -->
+    <!-- Left Ear Cup -->
+    <rect x="150" y="236" width="30" height="72" rx="15" fill="#FFFFFF"/>
+    <rect x="174" y="244" width="7" height="56" rx="3.5" fill="#FF5E62" opacity="0.8"/>
+
+    <!-- Right Ear Cup -->
+    <rect x="332" y="236" width="30" height="72" rx="15" fill="#FFFFFF"/>
+    <rect x="331" y="244" width="7" height="56" rx="3.5" fill="#EE0979" opacity="0.8"/>
+
+    <!-- Dynamic Lightning Bolt Symbol with Rounded Joints -->
+    <path d="M 276 138 
+             L 208 266 
+             C 205 272, 210 278, 217 278 
+             L 254 278 
+             L 230 380 
+             C 227 390, 239 396, 245 388 
+             L 316 260 
+             C 319 254, 315 248, 307 248 
+             L 272 248 
+             L 290 144 
+             C 292 135, 281 129, 276 138 Z" 
+          fill="#FFFFFF" />
+
+    <!-- Lightning Core Electric Pulse Accent -->
+    <path d="M 270 160 L 222 268 L 256 268 L 240 350 L 298 258 L 264 258 Z" 
+          fill="#FFF4D0" 
+          opacity="0.35"/>
+  </g>
+</svg>
