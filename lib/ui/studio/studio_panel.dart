@@ -169,7 +169,7 @@ class _StudioPanelState extends State<StudioPanel> {
 
                 const SizedBox(height: 16),
 
-                // Quick Action Chips: + Audio (Cover), + Voice, + Inspo
+                // Quick Action Chips: + Audio (Cover), 🎙️ Ses Kaydet, + Voice, + Inspo
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -188,6 +188,23 @@ class _StudioPanelState extends State<StudioPanel> {
                           onPressed: () => state.clearReferenceAudio(),
                         ),
                       ],
+                      const SizedBox(width: 8),
+                      // Mikrofondan Ses Kaydetme Butonu (Enstrümana Dönüştür sayfasındaki gibi)
+                      _buildActionChip(
+                        icon: state.isStudioRecordingMic ? Icons.stop_rounded : Icons.mic_rounded,
+                        label: state.isStudioRecordingMic
+                            ? '⏹️ Kaydı Durdur (${_formatDuration(state.studioMicRecordElapsedSec)})'
+                            : '🎙️ + Ses Kaydet',
+                        isActive: state.isStudioRecordingMic,
+                        activeColor: const Color(0xFFEF4444),
+                        onTap: () {
+                          if (state.isStudioRecordingMic) {
+                            state.stopStudioMicRecording();
+                          } else {
+                            state.startStudioMicRecording();
+                          }
+                        },
+                      ),
                       const SizedBox(width: 8),
                       _buildActionChip(
                         icon: Icons.piano_rounded,
@@ -219,30 +236,279 @@ class _StudioPanelState extends State<StudioPanel> {
                   ),
                 ),
 
-                if (state.isCover) ...[
-                  const SizedBox(height: 8),
+                // Canlı Mikrofon Kayıt Durumu Paneli
+                if (state.isStudioRecordingMic) ...[
+                  const SizedBox(height: 10),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)),
+                      color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.5)),
                     ),
-                    child: Row(
+                    child: Column(
                       children: [
-                        const Icon(Icons.auto_mode_rounded, size: 16, color: Color(0xFF60A5FA)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'SheetSage2 melodi transferi aktif. Referans sesin melodisi çıkarılarak yeni vokal tarzında söylenecek.',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFEF4444),
+                                shape: BoxShape.circle,
+                              ),
                             ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Mikrofon Kaydediliyor: ${_formatDuration(state.studioMicRecordElapsedSec)}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFEF4444),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Melodiyi veya şarkıyı mikrofona seslendirin veya ıslık çalın.',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ElevatedButton.icon(
+                          onPressed: () => state.stopStudioMicRecording(),
+                          icon: const Icon(Icons.stop_rounded, color: Colors.white, size: 18),
+                          label: const Text(
+                            'Kaydı Durdur ve Cover Olarak Kullan',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 12),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFEF4444),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
                       ],
                     ),
+                  ),
+                ],
+
+                // Cover Referans Sesi Kartı (Ses Önizleme Oynatıcısı ile Birlikte)
+                if (state.isCover && state.refAudioPath != null) ...[
+                  const SizedBox(height: 10),
+                  Builder(
+                    builder: (context) {
+                      final isCurrentTrack = state.audio.currentSong?.audioUrl == state.refAudioPath;
+                      final isPlaying = isCurrentTrack && state.audio.isPlaying;
+                      final currentPosSec = isCurrentTrack ? state.audio.position.inMilliseconds / 1000.0 : 0.0;
+                      final totalDurSec = state.refAudioDuration > 0 ? state.refAudioDuration : 1.0;
+                      final progressRatio = (currentPosSec / totalDurSec).clamp(0.0, 1.0);
+
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isPlaying ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6).withValues(alpha: 0.4),
+                            width: isPlaying ? 1.8 : 1.0,
+                          ),
+                          boxShadow: isPlaying
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(0xFF3B82F6).withValues(alpha: 0.20),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                // Play / Pause Önizleme Butonu
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () {
+                                      if (state.refAudioPath != null) {
+                                        if (isCurrentTrack) {
+                                          state.audio.togglePlayPause();
+                                        } else {
+                                          state.audio.playPathOrUrl(
+                                            state.refAudioPath!,
+                                            title: state.refAudioName ?? 'Cover Referans Ses',
+                                            durationSeconds: state.refAudioDuration,
+                                          );
+                                        }
+                                      }
+                                    },
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 180),
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        gradient: isPlaying
+                                            ? const LinearGradient(
+                                                colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              )
+                                            : LinearGradient(
+                                                colors: isDark
+                                                    ? [const Color(0xFF1E3A8A), const Color(0xFF1D4ED8)]
+                                                    : [const Color(0xFFDBEAFE), const Color(0xFFBFDBFE)],
+                                              ),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                        color: isPlaying ? Colors.white : (isDark ? Colors.white : const Color(0xFF1E40AF)),
+                                        size: 24,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              state.refAudioName ?? 'Cover Referansı',
+                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          const Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF3B82F6)),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          if (isPlaying) ...[
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: const Text(
+                                                'Önizleme Çalıyor',
+                                                style: TextStyle(
+                                                  fontSize: 8.5,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Color(0xFF3B82F6),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                          ],
+                                          Text(
+                                            isCurrentTrack
+                                                ? '${_formatDuration(currentPosSec)} / ${_formatDuration(totalDurSec)} | ${state.bpm} BPM'
+                                                : 'Süre: ${_formatDuration(state.refAudioDuration)} | ${state.bpm} BPM',
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Önizleme Durdur Butonu
+                                if (isCurrentTrack && (isPlaying || state.audio.position > Duration.zero)) ...[
+                                  IconButton(
+                                    icon: const Icon(Icons.stop_rounded, size: 18),
+                                    tooltip: 'Önizlemeyi Durdur',
+                                    color: Colors.redAccent,
+                                    onPressed: () => state.audio.stop(),
+                                  ),
+                                ],
+                                // Mikrofonla Tekrar Kaydet
+                                IconButton(
+                                  icon: const Icon(Icons.mic_rounded, size: 18),
+                                  tooltip: 'Mikrofonla Yeniden Kaydet',
+                                  color: const Color(0xFFEC4899),
+                                  onPressed: () {
+                                    if (isCurrentTrack) state.audio.stop();
+                                    state.startStudioMicRecording();
+                                  },
+                                ),
+                                // Dosya Değiştir
+                                IconButton(
+                                  icon: const Icon(Icons.folder_open_rounded, size: 18),
+                                  tooltip: 'Başka Dosya Seç',
+                                  color: const Color(0xFF3B82F6),
+                                  onPressed: () {
+                                    if (isCurrentTrack) state.audio.stop();
+                                    state.pickReferenceAudio();
+                                  },
+                                ),
+                                // Referansı Temizle
+                                IconButton(
+                                  icon: const Icon(Icons.close_rounded, size: 18),
+                                  tooltip: 'Cover Referansını Kaldır',
+                                  onPressed: () => state.clearReferenceAudio(),
+                                ),
+                              ],
+                            ),
+                            // İlerleme Çubuğu (Scrubber Slider)
+                            if (isCurrentTrack) ...[
+                              const SizedBox(height: 4),
+                              SliderTheme(
+                                data: SliderTheme.of(context).copyWith(
+                                  trackHeight: 3,
+                                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+                                  activeTrackColor: const Color(0xFF3B82F6),
+                                  inactiveTrackColor: isDark ? Colors.white12 : Colors.black12,
+                                  thumbColor: const Color(0xFF3B82F6),
+                                ),
+                                child: Slider(
+                                  value: progressRatio,
+                                  onChanged: (val) {
+                                    final targetMs = (val * totalDurSec * 1000).toInt();
+                                    state.audio.seek(Duration(milliseconds: targetMs));
+                                  },
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.auto_mode_rounded, size: 13, color: Color(0xFF3B82F6)),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'SheetSage2 melodi transferi aktif. Referans sesin melodisi birebir çıkarılarak yeni tarzda söylenecek.',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ],
 
@@ -1174,33 +1440,35 @@ class _StudioPanelState extends State<StudioPanel> {
     required IconData icon,
     required String label,
     required bool isActive,
+    Color? activeColor,
     required VoidCallback onTap,
   }) {
+    final color = activeColor ?? AppColors.primary;
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primary.withValues(alpha: 0.15) : Colors.transparent,
+          color: isActive ? color.withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isActive ? AppColors.primary : Colors.grey.withValues(alpha: 0.3),
+            color: isActive ? color : Colors.grey.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: isActive ? AppColors.primary : Colors.grey),
+            Icon(icon, size: 14, color: isActive ? color : Colors.grey),
             const SizedBox(width: 6),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 120),
+              constraints: const BoxConstraints(maxWidth: 140),
               child: Text(
                 label,
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                  color: isActive ? AppColors.primary : Colors.grey,
+                  color: isActive ? color : Colors.grey,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

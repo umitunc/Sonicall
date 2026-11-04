@@ -53,6 +53,10 @@ class AppStateProvider extends ChangeNotifier {
   bool _isCover = false;
   String? _refAudioPath;
   String? _refAudioName;
+  double _refAudioDuration = 30.0;
+  bool _isStudioRecordingMic = false;
+  double _studioMicRecordElapsedSec = 0.0;
+  Timer? _studioMicRecordTimer;
   int _bpm = 120;
   String _selectedModel = 'YuE2 3B INT8';
 
@@ -76,6 +80,9 @@ class AppStateProvider extends ChangeNotifier {
   bool get isCover => _isCover;
   String? get refAudioPath => _refAudioPath;
   String? get refAudioName => _refAudioName;
+  double get refAudioDuration => _refAudioDuration;
+  bool get isStudioRecordingMic => _isStudioRecordingMic;
+  double get studioMicRecordElapsedSec => _studioMicRecordElapsedSec;
   int get bpm => _bpm;
   String get selectedModel => _selectedModel;
 
@@ -546,8 +553,12 @@ class AppStateProvider extends ChangeNotifier {
   }
 
   void clearReferenceAudio() {
+    if (audio.currentSong?.id.startsWith('preview_') ?? false) {
+      audio.stop();
+    }
     _refAudioPath = null;
     _refAudioName = null;
+    _refAudioDuration = 30.0;
     _isCover = false;
     notifyListeners();
   }
@@ -565,11 +576,61 @@ class AppStateProvider extends ChangeNotifier {
         _refAudioPath = uploadRes['saved_path'];
         _refAudioName = result.first.name;
         _isCover = true;
+        if (uploadRes['duration'] is num) {
+          _refAudioDuration = (uploadRes['duration'] as num).toDouble();
+        }
+        if (uploadRes['bpm'] is num) {
+          _bpm = (uploadRes['bpm'] as num).toInt();
+        }
         if (_title.isEmpty) {
           _title = '${result.first.name.split('.').first} (Cover)';
         }
         notifyListeners();
       }
+    }
+  }
+
+  Future<void> startStudioMicRecording() async {
+    if (_isStudioRecordingMic) return;
+    final ok = await api.startMicRecording();
+    if (ok) {
+      _isStudioRecordingMic = true;
+      _studioMicRecordElapsedSec = 0.0;
+      _studioMicRecordTimer?.cancel();
+      _studioMicRecordTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+        _studioMicRecordElapsedSec += 0.2;
+        notifyListeners();
+      });
+      notifyListeners();
+    }
+  }
+
+  Future<void> stopStudioMicRecording() async {
+    if (!_isStudioRecordingMic) return;
+    _studioMicRecordTimer?.cancel();
+    _studioMicRecordTimer = null;
+    _isStudioRecordingMic = false;
+    notifyListeners();
+
+    final res = await api.stopMicRecording();
+    if (res != null && res['success'] == true) {
+      _refAudioPath = res['saved_path'];
+      _refAudioName = res['filename'];
+      _isCover = true;
+      if (res['duration'] is num) {
+        _refAudioDuration = (res['duration'] as num).toDouble();
+      } else {
+        _refAudioDuration = _studioMicRecordElapsedSec;
+      }
+      if (res['bpm'] is num) {
+        _bpm = (res['bpm'] as num).toInt();
+      }
+      if (_title.isEmpty) {
+        _title = '${res['filename'].split('.').first} (Cover)';
+      }
+      notifyListeners();
+    } else {
+      notifyListeners();
     }
   }
 
