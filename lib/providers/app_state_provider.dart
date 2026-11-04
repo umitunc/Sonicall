@@ -251,12 +251,15 @@ class AppStateProvider extends ChangeNotifier {
       final toRemove = <GenerationTask>[];
 
       for (final task in _activeTasks) {
-        // 1. Check if song already exists in database
-        final foundSong = _songs.where((s) => s.id == task.taskId || (task.title.isNotEmpty && s.title.trim() == task.title.trim())).firstOrNull;
-        if (foundSong != null) {
-          toRemove.add(task);
-          _newSongIds.add(foundSong.id);
-          continue;
+        // 1. NEVER match by title! Matching by title causes existing songs to prematurely kill the active task.
+        // ONLY match by exact taskId when taskId is not a tempId and exists in _songs.
+        if (!task.taskId.startsWith('temp_')) {
+          final foundSong = _songs.where((s) => s.id == task.taskId).firstOrNull;
+          if (foundSong != null) {
+            toRemove.add(task);
+            _newSongIds.add(foundSong.id);
+            continue;
+          }
         }
 
         // 2. Check task status from server API
@@ -272,6 +275,13 @@ class AppStateProvider extends ChangeNotifier {
             task.status = st ?? task.status;
 
             if (st == 'completed') {
+              // Ensure song is safely in _songs before removing the task card
+              if (sInfo['song'] is Map<String, dynamic>) {
+                final song = Song.fromJson(sInfo['song'] as Map<String, dynamic>);
+                _songs.removeWhere((s) => s.id == song.id);
+                _songs.insert(0, song);
+                _newSongIds.add(song.id);
+              }
               toRemove.add(task);
             } else if (st == 'error') {
               task.status = 'error';
@@ -330,19 +340,30 @@ class AppStateProvider extends ChangeNotifier {
         task = _activeTasks.firstWhere((t) => t.taskId == event.taskId);
       } catch (_) {}
 
+      // Fallback: If task was just started with tempId, link it to this event
+      if (task == null) {
+        try {
+          task = _activeTasks.firstWhere((t) => t.taskId.startsWith('temp_'));
+          if (task != null) {
+            task.taskId = event.taskId;
+          }
+        } catch (_) {}
+      }
+
       if (task != null) {
         task.progress = event.progress;
         task.status = event.status;
         task.message = event.message;
 
         if (event.status == 'completed') {
-          _activeTasks.remove(task);
+          // Seamless transition: insert song first before removing task card
           if (event.song != null) {
             _songs.removeWhere((s) => s.id == event.song!.id);
             _songs.insert(0, event.song!);
             _newSongIds.add(event.song!.id);
             audio.playSong(event.song!);
           }
+          _activeTasks.remove(task);
           refreshSongs();
         } else if (event.status == 'error') {
           task.status = 'error';

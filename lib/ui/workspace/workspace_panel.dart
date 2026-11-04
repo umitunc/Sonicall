@@ -133,8 +133,20 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
 
           // Songs List
           Expanded(
-            child: (state.songs.isEmpty && state.activeTasks.isEmpty)
-                ? Center(
+            child: Builder(
+              builder: (context) {
+                // Keep active tasks visible in queue until the song actually appears in the list
+                final activeTasksList = state.activeTasks.where((t) {
+                  // If the song is already loaded in the list, hide the task skeleton
+                  if (state.songs.any((s) => s.id == t.taskId)) return false;
+                  // Respect active library filters
+                  if (state.libraryFilter == LibraryFilter.covers && !t.isCover) return false;
+                  if (state.libraryFilter == LibraryFilter.instrumental && !t.isInstrumental) return false;
+                  return true;
+                }).toList();
+
+                if (state.songs.isEmpty && activeTasksList.isEmpty) {
+                  return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -158,26 +170,30 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
                         ),
                       ],
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    itemCount: state.activeTasks.length + state.songs.length,
-                    itemBuilder: (context, index) {
-                      // 1. Show Active Queued/Processing Tasks at top (Suno Queue)
-                      if (index < state.activeTasks.length) {
-                        final task = state.activeTasks[index];
-                        return _buildSkeletonCard(context, task, isDark);
-                      }
+                  );
+                }
 
-                      // 2. Show Completed Songs
-                      final songIndex = index - state.activeTasks.length;
-                      final song = state.songs[songIndex];
-                      final isCurrent = state.audio.currentSong?.id == song.id;
-                      final isPlaying = isCurrent && state.audio.isPlaying;
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  itemCount: activeTasksList.length + state.songs.length,
+                  itemBuilder: (context, index) {
+                    // 1. Show Active Queued/Processing Tasks at top with live progress
+                    if (index < activeTasksList.length) {
+                      final task = activeTasksList[index];
+                      return _buildSkeletonCard(context, task, isDark);
+                    }
 
-                      return _buildSongCard(context, song, isCurrent, isPlaying, state);
-                    },
-                  ),
+                    // 2. Show Completed Songs
+                    final songIndex = index - activeTasksList.length;
+                    final song = state.songs[songIndex];
+                    final isCurrent = state.audio.currentSong?.id == song.id;
+                    final isPlaying = isCurrent && state.audio.isPlaying;
+
+                    return _buildSongCard(context, song, isCurrent, isPlaying, state);
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),

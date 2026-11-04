@@ -645,6 +645,7 @@ class YuE2EngineAdapter:
                         print(f"[YuE2Engine] Fallback copy without conversion: {conv_err}")
                         shutil.copy(gen_path, dest_song_path)
 
+                await send_progress(98, "Son mastering ve kütüphane kaydı tamamlanıyor...")
                 cover_url = generate_cover_image(task_id, title, style)
                 audio_url = f"/output/songs/{saved_song_name}"
 

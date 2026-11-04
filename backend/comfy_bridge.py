@@ -163,6 +163,11 @@ class ComfyUIBridge:
                                 on_progress(88, "VAE Decode: 44.1kHz stüdyo sesine dönüştürülüyor..."),
                                 loop
                             )
+                        elif ctype in ["SaveAudio", "SaveAudioAdvanced"]:
+                            asyncio.run_coroutine_threadsafe(
+                                on_progress(92, "Ses dosyası kaydediliyor..."),
+                                loop
+                            )
 
                     elif mtype == "progress":
                         val = data.get("value", 0)
