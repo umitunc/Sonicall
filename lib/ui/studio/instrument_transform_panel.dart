@@ -1216,6 +1216,150 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
 
               const SizedBox(height: 12),
 
+              // Currently selected custom instrument indicator
+              if (state.selectedInstrument.id.startsWith('custom_')) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.2 : 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF6366F1), width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text('✨', style: TextStyle(fontSize: 22)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Seçili Özel Enstrüman: ${state.selectedInstrument.name}',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : const Color(0xFF312E81),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Özel yapay zeka solo izolasyon modeli aktif.',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.check_circle_rounded, color: Color(0xFF6366F1), size: 20),
+                    ],
+                  ),
+                ),
+              ],
+
+              // Custom Instrument Option Card if user is searching
+              if (_searchFilter.isNotEmpty) ...[
+                InkWell(
+                  onTap: () {
+                    final customInst = InstrumentCatalog.createCustom(_searchCtrl.text.trim());
+                    state.setInstrument(customInst);
+                    if (_titleCtrl.text != state.instrumentTitle) {
+                      _titleCtrl.text = state.instrumentTitle;
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E1B4B).withValues(alpha: 0.45) : const Color(0xFFEEF2FF),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: state.selectedInstrument.name.toLowerCase() == _searchCtrl.text.trim().toLowerCase()
+                            ? const Color(0xFF6366F1)
+                            : const Color(0xFF6366F1).withValues(alpha: 0.35),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Text('✨', style: TextStyle(fontSize: 22)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '"${_searchCtrl.text.trim()}" Olarak Dönüştür',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : const Color(0xFF312E81),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Katalog dışı özel enstrüman - yapay zeka solo sesine dönüştürür',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6366F1),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          icon: const Icon(Icons.check_rounded, size: 14),
+                          label: const Text('Seç', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          onPressed: () {
+                            final customInst = InstrumentCatalog.createCustom(_searchCtrl.text.trim());
+                            state.setInstrument(customInst);
+                            if (_titleCtrl.text != state.instrumentTitle) {
+                              _titleCtrl.text = state.instrumentTitle;
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
+              if (filteredInstruments.isEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                  alignment: Alignment.center,
+                  child: Column(
+                    children: [
+                      Icon(Icons.search_off_rounded, size: 36, color: isDark ? Colors.white38 : Colors.black38),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Katalogda "$_searchFilter" adında hazır enstrüman bulunamadı.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Yukarıdaki "✨ Özel Enstrüman Olarak Dönüştür" butonuna basarak doğrudan bu enstrümanı oluşturabilirsiniz.',
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF6366F1), fontWeight: FontWeight.w600),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+
               // Instruments in 2-column flex rows
               Column(
                 children: [
