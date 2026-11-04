@@ -1981,7 +1981,7 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
       },
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        height: 58,
+        constraints: const BoxConstraints(minHeight: 56),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected

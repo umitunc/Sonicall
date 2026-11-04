@@ -10,6 +10,8 @@ class ApiService {
   static const String wsUrl = 'ws://127.0.0.1:5824/ws/generation';
 
   WebSocketChannel? _wsChannel;
+  Timer? _reconnectTimer;
+  bool _isDisposed = false;
   final StreamController<GenerationProgressEvent> _progressController =
       StreamController<GenerationProgressEvent>.broadcast();
 
@@ -20,9 +22,24 @@ class ApiService {
   }
 
   void _connectWebSocket() {
+    if (_isDisposed) return;
     try {
-      _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
-      _wsChannel!.stream.listen(
+      _reconnectTimer?.cancel();
+      _wsChannel?.sink.close();
+    } catch (_) {}
+
+    try {
+      final channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      _wsChannel = channel;
+
+      // Handle connection error gracefully without unhandled VM exceptions
+      channel.ready.then((_) {
+        // Successfully connected to backend WebSocket
+      }).catchError((_) {
+        _scheduleReconnect();
+      });
+
+      channel.stream.listen(
         (data) {
           try {
             final jsonMap = jsonDecode(data);
@@ -31,19 +48,27 @@ class ApiService {
             }
             final event = GenerationProgressEvent.fromJson(jsonMap);
             _progressController.add(event);
-          } catch (e) {
-            // handle parse error
-          }
+          } catch (_) {}
         },
-        onError: (err) {
-          // Reconnect attempt after delay
-          Future.delayed(const Duration(seconds: 3), _connectWebSocket);
+        onError: (_) {
+          _scheduleReconnect();
         },
         onDone: () {
-          Future.delayed(const Duration(seconds: 3), _connectWebSocket);
+          _scheduleReconnect();
         },
+        cancelOnError: true,
       );
-    } catch (_) {}
+    } catch (_) {
+      _scheduleReconnect();
+    }
+  }
+
+  void _scheduleReconnect() {
+    if (_isDisposed) return;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(const Duration(seconds: 3), () {
+      _connectWebSocket();
+    });
   }
 
   Future<Map<String, dynamic>?> checkStatus() async {
@@ -362,7 +387,11 @@ class ApiService {
   }
 
   void dispose() {
-    _wsChannel?.sink.close();
+    _isDisposed = true;
+    _reconnectTimer?.cancel();
+    try {
+      _wsChannel?.sink.close();
+    } catch (_) {}
     _progressController.close();
   }
 }
