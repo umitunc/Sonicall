@@ -922,65 +922,210 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
                   ),
                 ],
               ] else ...[
-                // Audio Loaded Card
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF0FDF4),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
+                // Audio Loaded Card with Inline Audio Preview Controls
+                Builder(
+                  builder: (context) {
+                    final isCurrentTrack = state.audio.currentSong?.audioUrl == state.instrumentRefAudioPath;
+                    final isPlaying = isCurrentTrack && state.audio.isPlaying;
+                    final currentPosSec = isCurrentTrack ? state.audio.position.inMilliseconds / 1000.0 : 0.0;
+                    final totalDurSec = state.instrumentAudioDuration > 0 ? state.instrumentAudioDuration : 1.0;
+                    final progressRatio = (currentPosSec / totalDurSec).clamp(0.0, 1.0);
+
+                    return Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isPlaying
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFF10B981).withValues(alpha: 0.4),
+                          width: isPlaying ? 1.8 : 1.0,
                         ),
-                        child: const Icon(Icons.audio_file_rounded, color: Color(0xFF10B981), size: 26),
+                        boxShadow: isPlaying
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFF10B981).withValues(alpha: 0.20),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    state.instrumentRefAudioName ?? 'Referans Ses',
-                                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              // Interactive Play / Pause Preview Button
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    if (state.instrumentRefAudioPath != null) {
+                                      if (isCurrentTrack) {
+                                        state.audio.togglePlayPause();
+                                      } else {
+                                        state.audio.playPathOrUrl(
+                                          state.instrumentRefAudioPath!,
+                                          title: state.instrumentRefAudioName ?? 'Referans Ses',
+                                          durationSeconds: state.instrumentAudioDuration,
+                                        );
+                                      }
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      gradient: isPlaying
+                                          ? const LinearGradient(
+                                              colors: [Color(0xFF10B981), Color(0xFF059669)],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            )
+                                          : LinearGradient(
+                                              colors: isDark
+                                                  ? [const Color(0xFF065F46), const Color(0xFF047857)]
+                                                  : [const Color(0xFFD1FAE5), const Color(0xFFA7F3D0)],
+                                            ),
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: isPlaying
+                                          ? [
+                                              BoxShadow(
+                                                color: const Color(0xFF10B981).withValues(alpha: 0.45),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ]
+                                          : null,
+                                    ),
+                                    child: Icon(
+                                      isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                      color: isPlaying
+                                          ? Colors.white
+                                          : (isDark ? Colors.white : const Color(0xFF065F46)),
+                                      size: 26,
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(width: 6),
-                                const Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF10B981)),
-                              ],
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              'Süre: ${_formatDuration(state.instrumentAudioDuration)} | ${state.instrumentBpm} BPM',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF047857),
-                                fontWeight: FontWeight.w600,
                               ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            state.instrumentRefAudioName ?? 'Referans Ses',
+                                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        const Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF10B981)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Row(
+                                      children: [
+                                        if (isPlaying) ...[
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: const Text(
+                                              'Önizleme Çalıyor',
+                                              style: TextStyle(
+                                                fontSize: 9.0,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF10B981),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                        ],
+                                        Text(
+                                          isCurrentTrack
+                                              ? '${_formatDuration(currentPosSec)} / ${_formatDuration(totalDurSec)} | ${state.instrumentBpm} BPM'
+                                              : 'Süre: ${_formatDuration(state.instrumentAudioDuration)} | ${state.instrumentBpm} BPM',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF047857),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Stop button if preview is active
+                              if (isCurrentTrack && (isPlaying || state.audio.position > Duration.zero)) ...[
+                                IconButton(
+                                  icon: const Icon(Icons.stop_rounded, size: 20),
+                                  tooltip: 'Önizlemeyi Durdur',
+                                  color: Colors.redAccent,
+                                  onPressed: () => state.audio.stop(),
+                                ),
+                              ],
+                              IconButton(
+                                icon: const Icon(Icons.refresh_rounded, size: 22),
+                                tooltip: 'Başka Ses Seç / Yenile',
+                                onPressed: () {
+                                  if (isCurrentTrack) {
+                                    state.audio.stop();
+                                  }
+                                  state.clearInstrumentAudio();
+                                },
+                              ),
+                            ],
+                          ),
+
+                          // Mini scrubber timeline slider
+                          const SizedBox(height: 6),
+                          SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              trackHeight: 3.5,
+                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+                              overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+                              activeTrackColor: const Color(0xFF10B981),
+                              inactiveTrackColor: isDark ? Colors.white12 : Colors.black12,
+                              thumbColor: const Color(0xFF10B981),
                             ),
-                          ],
-                        ),
+                            child: Slider(
+                              value: progressRatio,
+                              min: 0.0,
+                              max: 1.0,
+                              onChanged: (val) {
+                                if (state.instrumentRefAudioPath != null) {
+                                  final seekSec = (val * totalDurSec).round();
+                                  if (!isCurrentTrack) {
+                                    state.audio.playPathOrUrl(
+                                      state.instrumentRefAudioPath!,
+                                      title: state.instrumentRefAudioName ?? 'Referans Ses',
+                                      durationSeconds: state.instrumentAudioDuration,
+                                    ).then((_) {
+                                      state.audio.seek(Duration(seconds: seekSec));
+                                    });
+                                  } else {
+                                    state.audio.seek(Duration(seconds: seekSec));
+                                  }
+                                }
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.refresh_rounded, size: 22),
-                        tooltip: 'Başka Ses Seç / Yenile',
-                        onPressed: () => state.clearInstrumentAudio(),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ],
 

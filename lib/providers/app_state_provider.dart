@@ -618,6 +618,9 @@ class AppStateProvider extends ChangeNotifier {
   }
 
   void clearInstrumentAudio() {
+    if (audio.currentSong?.id.startsWith('preview_') ?? false) {
+      audio.stop();
+    }
     _instrumentRefAudioPath = null;
     _instrumentRefAudioName = null;
     _instrumentAudioDuration = 30.0;

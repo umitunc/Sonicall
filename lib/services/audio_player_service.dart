@@ -103,18 +103,21 @@ class AudioPlayerService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> playPathOrUrl(String pathOrUrl, {String? title}) async {
+  Future<void> playPathOrUrl(String pathOrUrl, {String? title, double? durationSeconds}) async {
     _position = Duration.zero;
+    final dur = (durationSeconds != null && durationSeconds > 0) ? durationSeconds.round() : 30;
+    final min = (dur ~/ 60).toString().padLeft(2, '0');
+    final sec = (dur % 60).toString().padLeft(2, '0');
     _currentSong = Song(
       id: 'preview_${DateTime.now().millisecondsSinceEpoch}',
-      title: title ?? 'Vokal Önizleme',
-      style: 'Vocal Mastering Preview',
+      title: title ?? 'Önizleme',
+      style: 'Referans Ses Önizleme',
       lyrics: '',
       isCover: false,
-      isInstrumental: false,
-      model: 'Vocal Mastering',
-      durationSeconds: 30,
-      durationFormatted: '00:30',
+      isInstrumental: true,
+      model: 'Referans Ses',
+      durationSeconds: dur,
+      durationFormatted: '$min:$sec',
       audioUrl: pathOrUrl,
       coverUrl: '',
       createdAt: '',
