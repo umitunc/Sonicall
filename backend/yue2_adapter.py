@@ -293,12 +293,24 @@ class YuE2EngineAdapter:
         sheetsage_mode = "melody"
         if is_instrumental:
             effective_lyrics = ""
-            effective_temperature = min(temperature, 0.72)
-            effective_repetition = max(repetition_penalty, 1.22)
-            effective_style = f"{style}, unaccompanied solo instrument, dry acoustic isolation booth, pristine solo tone, zero vocals, no voice, no singing"
+            # Low temperature (0.28) and reduced top_k (20) forces YuE2 into near-deterministic
+            # decoding of the conditioned SheetSage2 ABC melody notes, preventing melodic drifting.
+            effective_temperature = 0.28
+            effective_top_p = 0.82
+            effective_top_k = 20
+            # Keep repetition penalty gentle (1.02) so repeated notes in the reference melody are not skipped.
+            effective_repetition = 1.02
+            effective_style = (
+                f"{style}, exact reference melody tracking, note for note reproduction, "
+                f"identical melodic pitch contour, verbatim transcription of reference notes, "
+                f"strictly follow reference melody line, zero melodic variation, no melodic improvisation, "
+                f"unaccompanied solo instrument, dry acoustic isolation booth, pristine solo tone, zero vocals, no voice, no singing"
+            )
         else:
             effective_lyrics = lyrics
             effective_temperature = temperature
+            effective_top_p = top_p
+            effective_top_k = 100
             effective_repetition = repetition_penalty
             effective_style = style
 
@@ -340,8 +352,8 @@ class YuE2EngineAdapter:
                     "mode": "melody",
                     "max_duration": duration_sec,
                     "temperature": effective_temperature,
-                    "top_p": top_p,
-                    "top_k": 100,
+                    "top_p": effective_top_p,
+                    "top_k": effective_top_k,
                     "repetition_penalty": effective_repetition,
                     "cfg_scale": cfg_scale
                 }
@@ -620,24 +632,6 @@ class YuE2EngineAdapter:
                     try:
                         import soundfile as sf
                         audio_data, sample_rate = sf.read(str(gen_path))
-
-                        # Strict Solo Instrument Mode: Eradicate any possible vocal bleed or speech formant
-                        if is_cover and is_instrumental:
-                            try:
-                                from audio_stems import butter_bandpass
-                                from scipy.signal import sosfilt
-                                if audio_data.ndim == 2:
-                                    left = audio_data[:, 0]
-                                    right = audio_data[:, 1]
-                                    mid = 0.5 * (left + right)
-                                    side = 0.5 * (left - right)
-                                    sos_vocal = butter_bandpass(280, 4200, sample_rate, order=4)
-                                    vocal_mid = sosfilt(sos_vocal, mid)
-                                    left_clean = np.clip(left - (vocal_mid * 0.92), -1.0, 1.0)
-                                    right_clean = np.clip(right - (vocal_mid * 0.92), -1.0, 1.0)
-                                    audio_data = np.column_stack([left_clean, right_clean])
-                            except Exception as v_clean_err:
-                                print(f"[YuE2Engine] Vocal clean note: {v_clean_err}")
 
                         smooth_audio = apply_musical_fade_envelope(audio_data, sample_rate, fade_out_sec=4.5)
                         sf.write(str(dest_song_path), smooth_audio, sample_rate, subtype='PCM_16')

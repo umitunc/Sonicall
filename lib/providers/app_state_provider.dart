@@ -719,13 +719,15 @@ class AppStateProvider extends ChangeNotifier {
             : '$instTurkishName Solo');
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
 
-    // High-precision English tag prompt for YuE2 conditioning:
+    // High-precision English tag prompt for YuE2 note-for-note melody tracking:
     final specificStyle = _instrumentPrompt.trim().isNotEmpty
         ? _instrumentPrompt.trim()
         : _selectedInstrument.promptStyle;
     final effectivePrompt =
         'genre: solo instrumental, style: solo $engName, instrument: $engName, '
-        'pure acoustic $engName solo, $specificStyle, '
+        'exact reference melody tracking, note for note reproduction, identical melodic pitch contour, '
+        'verbatim pitch transcription, strictly follow reference melody notes, zero melodic variation, '
+        'no melodic improvisation, pure acoustic $engName solo, $specificStyle, '
         'single player unaccompanied solo, dry acoustic studio isolation booth, '
         'pristine acoustic resonance, zero vocals, no voice, no singer, no choir, no speech, no other instruments';
 
@@ -733,7 +735,9 @@ class AppStateProvider extends ChangeNotifier {
         ? _instrumentNegativePrompt.trim()
         : _selectedInstrument.negativeStyle;
     final effectiveNegative =
-        'vocals, singing, singing voice, speech, voice, vocal, singer, humming, chanting, choir, spoken word, talking, '
+        'melodic improvisation, altered melody, wrong notes, drifting melody, off-key, pitch deviation, '
+        'octave jumps, added harmony, different tune, wrong melody, vocals, singing, singing voice, speech, '
+        'voice, vocal, singer, humming, chanting, choir, spoken word, talking, '
         'backing band, drums, rhythm section, percussion, electric bass, chords, second instrument, $specificNegative';
 
     final task = GenerationTask(
