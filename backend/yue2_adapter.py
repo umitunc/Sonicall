@@ -473,23 +473,29 @@ class YuE2EngineAdapter:
 
         # Advanced options mapping
         is_auto_duration = bool(request_data.get("is_auto_duration", False))
-        if ref_audio_path and Path(ref_audio_path).exists() and (is_auto_duration or is_cover):
-            try:
-                from audio_service import audio_service
-                analysis = audio_service.analyze_audio_file(ref_audio_path)
-                ref_dur = float(analysis.get("duration", 0.0))
-                if ref_dur > 1.5:
-                    duration_sec = max(5.0, min(360.0, ref_dur))
-                else:
-                    duration_sec = float(request_data.get("duration", 45.0))
-            except Exception as e:
-                duration_sec = float(request_data.get("duration", 45.0))
-        elif is_auto_duration:
-            clean_lines = [l for l in structured_lyrics.split('\n') if l.strip() and not (l.startswith('[') and l.endswith(']'))]
-            calculated_sec = max(35.0, min(240.0, len(clean_lines) * 4.2 + 24.0))
-            duration_sec = calculated_sec
+        user_duration = float(request_data.get("duration", 45.0))
+
+        if is_auto_duration:
+            # Auto duration mode: match reference audio duration if available, else derive from lyrics
+            if ref_audio_path and Path(ref_audio_path).exists():
+                try:
+                    from audio_service import audio_service
+                    analysis = audio_service.analyze_audio_file(ref_audio_path)
+                    ref_dur = float(analysis.get("duration", 0.0))
+                    if ref_dur > 1.5:
+                        duration_sec = max(5.0, min(360.0, ref_dur))
+                    else:
+                        duration_sec = user_duration
+                except Exception as e:
+                    duration_sec = user_duration
+            else:
+                clean_lines = [l for l in structured_lyrics.split('\n') if l.strip() and not (l.startswith('[') and l.endswith(']'))]
+                calculated_sec = max(35.0, min(240.0, len(clean_lines) * 4.2 + 24.0))
+                duration_sec = calculated_sec
         else:
-            duration_sec = float(request_data.get("duration", 45.0))
+            # Custom duration mode explicitly chosen by the user in UI (e.g. 45s, 60s, 120s):
+            # MUST strictly obey user's chosen duration regardless of reference audio length!
+            duration_sec = max(5.0, min(360.0, user_duration))
 
         vocal_gender = str(request_data.get("vocal_gender", "Auto"))
         if vocal_gender == "Male" and "male" not in style.lower():
@@ -633,7 +639,24 @@ class YuE2EngineAdapter:
                         import soundfile as sf
                         audio_data, sample_rate = sf.read(str(gen_path))
 
-                        smooth_audio = apply_musical_fade_envelope(audio_data, sample_rate, fade_out_sec=4.5)
+                        # Enforce exact target duration requested by user
+                        target_samples = int(duration_sec * sample_rate)
+                        current_samples = len(audio_data)
+
+                        if current_samples > target_samples:
+                            audio_data = audio_data[:target_samples]
+                        elif current_samples < target_samples and current_samples > int(sample_rate * 2.0):
+                            repetitions = (target_samples // current_samples) + 1
+                            if audio_data.ndim == 1:
+                                audio_data = np.tile(audio_data, repetitions)[:target_samples]
+                            else:
+                                audio_data = np.tile(audio_data, (repetitions, 1))[:target_samples]
+
+                        smooth_audio = apply_musical_fade_envelope(
+                            audio_data,
+                            sample_rate,
+                            fade_out_sec=min(4.0, duration_sec * 0.12)
+                        )
                         sf.write(str(dest_song_path), smooth_audio, sample_rate, subtype='PCM_16')
                     except Exception as conv_err:
                         print(f"[YuE2Engine] Fallback copy without conversion: {conv_err}")

@@ -227,10 +227,22 @@ class AudioService:
                         hop_length=hop_len
                     )
 
-                    # Resample RMS to total_samples
+                    ref_duration_actual = float(ref_len) / float(sr_ref)
+
+                    # Compute RMS times and F0 times
+                    rms_times = librosa.frames_to_time(np.arange(len(rms)), sr=sr_ref, hop_length=hop_len)
+                    f0_times = librosa.frames_to_time(np.arange(len(f0)), sr=sr_ref, hop_length=hop_len)
+
+                    # Output timestamps mapped to reference audio duration (looping if duration_sec > ref_duration)
+                    if ref_duration_actual > 0.5:
+                        t_mapped = t_full % ref_duration_actual
+                    else:
+                        t_mapped = t_full
+
+                    # Resample RMS to total_samples based on mapped time
                     rms_resampled = np.interp(
-                        np.linspace(0, len(rms) - 1, total_samples),
-                        np.arange(len(rms)),
+                        t_mapped,
+                        rms_times,
                         rms
                     )
                     max_rms = np.max(rms_resampled)
@@ -263,8 +275,8 @@ class AudioService:
                             f0[valid_indices]
                         )
                         f0_resampled = np.interp(
-                            np.linspace(0, len(f0_interp) - 1, total_samples),
-                            np.arange(len(f0_interp)),
+                            t_mapped,
+                            f0_times,
                             f0_interp
                         )
                         pitches = f0_resampled.astype(np.float32)
