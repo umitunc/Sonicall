@@ -171,6 +171,16 @@ class AudioPlayerService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> stop() async {
+    try {
+      await _player.stop();
+      _currentSong = null;
+      _position = Duration.zero;
+      _state = PlayerState.stopped;
+    } catch (_) {}
+    notifyListeners();
+  }
+
   Future<void> resume() async {
     await _player.resume();
     notifyListeners();

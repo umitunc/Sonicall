@@ -213,13 +213,86 @@ def toggle_favorite(song_id: str):
     save_db(db)
     return updated
 
+def remove_file_safely(file_path: Path):
+    try:
+        if file_path.exists() and file_path.is_file():
+            file_path.unlink()
+            print(f"[Delete] Diskten silindi: {file_path}")
+    except Exception as e:
+        print(f"[Delete] Dosya silinemedi: {file_path}: {e}")
+
+def remove_dir_safely(dir_path: Path):
+    try:
+        if dir_path.exists() and dir_path.is_dir():
+            shutil.rmtree(dir_path, ignore_errors=True)
+            print(f"[Delete] Klasör diskten silindi: {dir_path}")
+    except Exception as e:
+        print(f"[Delete] Klasör silinemedi: {dir_path}: {e}")
+
 @app.delete("/api/songs/{song_id}")
 def delete_song(song_id: str):
     db = get_db()
+    target_song = None
+    for s in db:
+        if s.get("id") == song_id:
+            target_song = s
+            break
+
+    # 1. Ses dosyalarını diskten sil (SONGS_DIR ve audio_url)
+    if target_song and target_song.get("audio_url"):
+        raw_url = target_song.get("audio_url", "").lstrip("/")
+        remove_file_safely(BASE_DIR / raw_url)
+
+    for ext in [".wav", ".mp3", ".flac", ".ogg", ".m4a"]:
+        remove_file_safely(SONGS_DIR / f"{song_id}{ext}")
+
+    # 2. Kapak görselini diskten sil (COVERS_DIR ve cover_url)
+    if target_song and target_song.get("cover_url"):
+        raw_url = target_song.get("cover_url", "").lstrip("/")
+        remove_file_safely(BASE_DIR / raw_url)
+
+    for ext in [".svg", ".png", ".jpg", ".jpeg", ".webp"]:
+        remove_file_safely(COVERS_DIR / f"{song_id}{ext}")
+
+    # 3. Kök/Stems klasörünü ve ayrıştırılmış kanalları sil
+    remove_dir_safely(STEMS_DIR / song_id)
+    for ext in [".wav", ".mp3", ".flac"]:
+        for stem_name in ["vocals", "instrumental", "drums", "bass", "other"]:
+            remove_file_safely(STEMS_DIR / f"{song_id}_{stem_name}{ext}")
+
+    # 4. Nota ve sheet music dosyalarını sil (.abc, .pdf)
+    if target_song and target_song.get("sheet_music_url"):
+        raw_url = target_song.get("sheet_music_url", "").lstrip("/")
+        remove_file_safely(BASE_DIR / raw_url)
+
+    for ext in [".abc", ".pdf", ".mid", ".midi", ".xml", ".mxl"]:
+        remove_file_safely(SHEETS_DIR / f"{song_id}{ext}")
+
+    # 5. Vokal mastering çıktılarını sil
+    for ext in [".wav", ".mp3", ".flac"]:
+        remove_file_safely(VOCAL_MASTER_DIR / f"{song_id}{ext}")
+    remove_dir_safely(VOCAL_MASTER_DIR / song_id)
+
+    # 6. ComfyUI geçici referans sesini sil
+    try:
+        from comfy_bridge import COMFY_INPUT, COMFY_OUTPUT
+        for ext in [".wav", ".mp3", ".ogg", ".flac"]:
+            remove_file_safely(COMFY_INPUT / f"cover_ref_{song_id}{ext}")
+        if COMFY_OUTPUT.exists():
+            for f in COMFY_OUTPUT.glob(f"*{song_id}*"):
+                remove_file_safely(f)
+    except Exception:
+        pass
+
+    # 7. Veritabanından (data.json) kaldır
     filtered = [s for s in db if s.get("id") != song_id]
-    if len(filtered) == len(db):
+    if len(filtered) == len(db) and not target_song:
         raise HTTPException(status_code=404, detail="Şarkı bulunamadı")
     save_db(filtered)
+
+    # 8. Aktif bellek görevlerinden kaldır
+    engine_adapter.active_tasks.pop(song_id, None)
+
     return {"success": True, "deleted_id": song_id}
 
 @app.post("/api/songs/{song_id}/stems")

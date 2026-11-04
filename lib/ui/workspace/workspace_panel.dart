@@ -738,11 +738,55 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
                     },
                   ),
 
-                  // 5. Delete Button
+                  // 5. Delete Button (Deletes from workspace and disk)
                   IconButton(
                     icon: const Icon(Icons.delete_outline_rounded, size: 19, color: Colors.grey),
-                    tooltip: 'Sil',
-                    onPressed: () => state.deleteSong(song),
+                    tooltip: 'Diskten Sil',
+                    onPressed: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          title: const Row(
+                            children: [
+                              Icon(Icons.delete_forever_rounded, color: Colors.redAccent, size: 22),
+                              SizedBox(width: 8),
+                              Text('Parçayı Diskten Sil', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          content: Text(
+                            '"${song.title}" parçası ve ses dosyası diskten kalıcı olarak silinecek. Emin misiniz?',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(false),
+                              child: const Text('İptal'),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              child: const Text('Sil'),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (confirmed == true) {
+                        await state.deleteSong(song);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Parça ve ses dosyaları diskten silindi.'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      }
+                    },
                   ),
                 ],
               ),

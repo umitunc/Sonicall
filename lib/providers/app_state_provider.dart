@@ -344,9 +344,7 @@ class AppStateProvider extends ChangeNotifier {
       if (task == null) {
         try {
           task = _activeTasks.firstWhere((t) => t.taskId.startsWith('temp_'));
-          if (task != null) {
-            task.taskId = event.taskId;
-          }
+          task.taskId = event.taskId;
         } catch (_) {}
       }
 
@@ -1159,9 +1157,16 @@ class AppStateProvider extends ChangeNotifier {
   }
 
   Future<void> deleteSong(Song song) async {
+    // If the currently playing song is being deleted, stop playback first to release OS file locks
+    if (audio.currentSong?.id == song.id) {
+      await audio.stop();
+    }
     _songs.removeWhere((s) => s.id == song.id);
+    _newSongIds.remove(song.id);
     notifyListeners();
+
     await api.deleteSong(song.id);
+    await refreshSongs();
   }
 
   Future<bool> extractSongStems(Song song) async {
