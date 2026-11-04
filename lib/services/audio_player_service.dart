@@ -103,6 +103,51 @@ class AudioPlayerService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> playPathOrUrl(String pathOrUrl, {String? title}) async {
+    _position = Duration.zero;
+    _currentSong = Song(
+      id: 'preview_${DateTime.now().millisecondsSinceEpoch}',
+      title: title ?? 'Vokal Önizleme',
+      style: 'Vocal Mastering Preview',
+      lyrics: '',
+      isCover: false,
+      isInstrumental: false,
+      model: 'Vocal Mastering',
+      durationSeconds: 30,
+      durationFormatted: '00:30',
+      audioUrl: pathOrUrl,
+      coverUrl: '',
+      createdAt: '',
+      dateGroup: 'Bugün',
+    );
+    notifyListeners();
+
+    try {
+      await _player.stop();
+      Source source;
+      if (!kIsWeb) {
+        String cleanPath = pathOrUrl.startsWith('/') ? pathOrUrl.substring(1) : pathOrUrl;
+        File localFile = File(cleanPath);
+        if (!localFile.existsSync()) {
+          localFile = File('D:/Works/2026/Sonicall/$cleanPath');
+        }
+        if (localFile.existsSync()) {
+          source = DeviceFileSource(localFile.path);
+        } else {
+          String fullUrl = pathOrUrl.startsWith('/') ? '${ApiService.baseUrl}$pathOrUrl' : pathOrUrl;
+          source = UrlSource(fullUrl);
+        }
+      } else {
+        String fullUrl = pathOrUrl.startsWith('/') ? '${ApiService.baseUrl}$pathOrUrl' : pathOrUrl;
+        source = UrlSource(fullUrl);
+      }
+      await _player.play(source);
+    } catch (e) {
+      print('playPathOrUrl error: $e');
+    }
+    notifyListeners();
+  }
+
   Future<void> togglePlayPause() async {
     try {
       if (_state == PlayerState.playing) {

@@ -338,6 +338,29 @@ class ApiService {
     return null;
   }
 
+  Future<Map<String, dynamic>?> masterVocal(Map<String, dynamic> payload) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/api/vocal/master'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+      if (res.statusCode == 200) {
+        return jsonDecode(utf8.decode(res.bodyBytes));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<bool> openVocalMasterFolder() async {
+    try {
+      final res = await http.post(Uri.parse('$baseUrl/api/vocal/open-folder'));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   void dispose() {
     _wsChannel?.sink.close();
     _progressController.close();

@@ -291,8 +291,16 @@ class YuE2EngineAdapter:
         is_instrumental: bool = False
     ) -> Dict[str, Any]:
         sheetsage_mode = "melody"
-        effective_lyrics = "" if is_instrumental else lyrics
-        effective_style = f"instrumental, pure acoustic solo, {style}, single player instrument solo, unaccompanied, no vocals, zero voice, no singer, no choir, no speech" if is_instrumental else style
+        if is_instrumental:
+            effective_lyrics = ""
+            effective_temperature = min(temperature, 0.72)
+            effective_repetition = max(repetition_penalty, 1.22)
+            effective_style = f"{style}, unaccompanied solo instrument, dry acoustic isolation booth, pristine solo tone, zero vocals, no voice, no singing"
+        else:
+            effective_lyrics = lyrics
+            effective_temperature = temperature
+            effective_repetition = repetition_penalty
+            effective_style = style
 
         return {
             "1": {
@@ -326,16 +334,15 @@ class YuE2EngineAdapter:
                 "inputs": {
                     "clip": ["1", 1],
                     "style": effective_style,
-                    "negative_style": negative_style,
                     "lyrics": effective_lyrics,
                     "abc": ["12", 0],
                     "seed": seed,
                     "mode": "melody",
                     "max_duration": duration_sec,
-                    "temperature": temperature,
+                    "temperature": effective_temperature,
                     "top_p": top_p,
                     "top_k": 100,
-                    "repetition_penalty": repetition_penalty,
+                    "repetition_penalty": effective_repetition,
                     "cfg_scale": cfg_scale
                 }
             },

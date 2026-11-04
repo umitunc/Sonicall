@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from config import (
-    PORT, HOST, BASE_DIR, OUTPUT_DIR, UPLOADS_DIR, SONGS_DIR, COVERS_DIR, STEMS_DIR, SHEETS_DIR,
+    PORT, HOST, BASE_DIR, OUTPUT_DIR, UPLOADS_DIR, SONGS_DIR, COVERS_DIR, STEMS_DIR, SHEETS_DIR, VOCAL_MASTER_DIR,
     load_settings, save_settings
 )
 from model_manager import model_manager
@@ -28,6 +28,7 @@ from comfy_bridge import comfy_bridge
 from audio_stems import extract_stems_for_song
 from sheet_music_generator import generate_sheet_music_pdf
 from audio_service import audio_service
+from vocal_mastering_service import vocal_mastering_service
 
 app = FastAPI(
     title="Sonicall AI Music Engine",
@@ -88,6 +89,32 @@ class SettingsUpdateRequest(BaseModel):
 
 class AudioAnalyzeRequest(BaseModel):
     file_path: str
+
+class VocalMasterRequest(BaseModel):
+    file_path: str
+    title: Optional[str] = "Mastered Studio Vocal"
+    save_to_library: bool = True
+    # Step 1: De-Reverb & De-Noise
+    enable_dereverb: bool = True
+    dereverb_intensity: float = 0.85
+    denoise_threshold_db: float = -38.0
+    dereverb_model: str = "anvuew/dereverb_mel_band_roformer"
+    # Step 2: Vocal Enhancement
+    enable_enhancement: bool = True
+    parallel_blend: float = 0.45
+    air_boost: float = 0.60
+    body_warmth: float = 0.50
+    de_esser_enabled: bool = True
+    enhancer_model: str = "ResembleAI/resemble-enhance"
+    # Step 3: DAW Studio Mastering
+    enable_daw_master: bool = True
+    low_cut_hz: float = 85.0
+    boxy_mud_cut_hz: float = 380.0
+    boxy_mud_gain_db: float = -3.5
+    compressor_ratio: float = 4.0
+    compressor_makeup_db: float = 3.5
+    studio_ambience_type: str = "Plate Reverb"
+    ambience_wet_mix: float = 0.14
 
 @app.get("/")
 def root():
@@ -321,6 +348,67 @@ def stop_mic_recording():
 @app.get("/api/record/status")
 def get_mic_recording_status():
     return audio_service.get_status()
+
+@app.post("/api/vocal/master")
+def master_vocal(req: VocalMasterRequest):
+    try:
+        res = vocal_mastering_service.process_vocal(
+            input_audio_path=req.file_path,
+            title=req.title or "Mastered Studio Vocal",
+            enable_dereverb=req.enable_dereverb,
+            dereverb_intensity=req.dereverb_intensity,
+            denoise_threshold_db=req.denoise_threshold_db,
+            dereverb_model=req.dereverb_model,
+            enable_enhancement=req.enable_enhancement,
+            parallel_blend=req.parallel_blend,
+            air_boost=req.air_boost,
+            body_warmth=req.body_warmth,
+            de_esser_enabled=req.de_esser_enabled,
+            enhancer_model=req.enhancer_model,
+            enable_daw_master=req.enable_daw_master,
+            low_cut_hz=req.low_cut_hz,
+            boxy_mud_cut_hz=req.boxy_mud_cut_hz,
+            boxy_mud_gain_db=req.boxy_mud_gain_db,
+            compressor_ratio=req.compressor_ratio,
+            compressor_makeup_db=req.compressor_makeup_db,
+            studio_ambience_type=req.studio_ambience_type,
+            ambience_wet_mix=req.ambience_wet_mix
+        )
+
+        if req.save_to_library and res.get("success"):
+            # Add to data.json so it is accessible in Kütüphanem (Workspace)
+            db = get_db()
+            song_record = {
+                "id": res["id"],
+                "title": res["title"],
+                "prompt": f"Vocal Mastering: {req.dereverb_model.split('/')[-1]} -> {req.enhancer_model.split('/')[-1]} -> 4:1 Comp + {req.studio_ambience_type}",
+                "style": "Studio Vocal Master (De-Reverb + Enhance + DAW)",
+                "lyrics": "[Vokal Mix & Mastering Stüdyo Çıktısı]\n• De-Reverb: %" + str(int(req.dereverb_intensity * 100)) + "\n• Parallel Blend: %" + str(int(req.parallel_blend * 100)) + "\n• Clean Low-Cut: " + str(int(req.low_cut_hz)) + "Hz\n• Boxy Cut: " + str(int(req.boxy_mud_cut_hz)) + "Hz (" + str(req.boxy_mud_gain_db) + "dB)\n• Compressor: " + str(req.compressor_ratio) + ":1\n• Ambience: " + req.studio_ambience_type,
+                "audio_url": res["audio_url"],
+                "cover_url": "",
+                "duration": res["duration"],
+                "duration_formatted": f"{int(res['duration']) // 60:02d}:{int(res['duration']) % 60:02d}",
+                "liked": False,
+                "is_instrumental": False,
+                "is_cover": False,
+                "is_vocal_master": True,
+                "model": "MelBand-RoFormer + Resemble-Enhance",
+                "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
+            }
+            db.insert(0, song_record)
+            save_db(db)
+            res["song"] = song_record
+
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/vocal/open-folder")
+def open_vocal_master_folder():
+    if VOCAL_MASTER_DIR.exists():
+        os.startfile(str(VOCAL_MASTER_DIR))
+        return {"success": True, "opened": str(VOCAL_MASTER_DIR)}
+    raise HTTPException(status_code=404, detail="Vokal master klasörü bulunamadı")
 
 @app.post("/api/generate")
 async def generate_song(req: GenerateRequest):

@@ -132,6 +132,74 @@ class AppStateProvider extends ChangeNotifier {
       _instrumentNegativePrompt.isNotEmpty ? _instrumentNegativePrompt : _selectedInstrument.negativeStyle;
   bool get pureSoloIsolation => _pureSoloIsolation;
 
+  // ==========================================
+  // Vocal Mix & Mastering State
+  // ==========================================
+  String? _vocalMasterRefPath;
+  String? _vocalMasterRefName;
+  double _vocalMasterDuration = 0.0;
+  String _vocalMasterTitle = '';
+
+  // Step 1: De-Reverb & De-Noise
+  bool _vocalEnableDereverb = true;
+  String _vocalDereverbModel = 'anvuew/dereverb_mel_band_roformer';
+  double _vocalDereverbIntensity = 0.85; // 0.0 - 1.0
+  double _vocalDenoiseThresholdDb = -38.0; // dB
+
+  // Step 2: Vocal Enhancement
+  bool _vocalEnableEnhancement = true;
+  String _vocalEnhancerModel = 'ResembleAI/resemble-enhance';
+  double _vocalParallelBlend = 0.45; // 45% (Golden ratio: 40-50%)
+  double _vocalAirBoost = 0.60;
+  double _vocalBodyWarmth = 0.50;
+  bool _vocalDeEsserEnabled = true;
+
+  // Step 3: DAW Studio Master
+  bool _vocalEnableDawMaster = true;
+  double _vocalLowCutHz = 85.0; // 80 - 100 Hz
+  double _vocalBoxyMudCutHz = 380.0; // 300 - 500 Hz
+  double _vocalBoxyMudGainDb = -3.5; // -3 to -5 dB
+  double _vocalCompressorRatio = 4.0; // 4:1
+  double _vocalCompressorMakeupDb = 3.5;
+  String _vocalStudioAmbienceType = 'Plate Reverb';
+  double _vocalAmbienceWetMix = 0.14; // 14%
+
+  // Vocal Master Process State
+  bool _isVocalMasterProcessing = false;
+  double _vocalMasterProgress = 0.0;
+  String _vocalMasterMessage = '';
+  Map<String, dynamic>? _lastVocalMasterResult;
+  String? _vocalMasterResultAudioUrl;
+
+  // Getters for Vocal Master
+  String? get vocalMasterRefPath => _vocalMasterRefPath;
+  String? get vocalMasterRefName => _vocalMasterRefName;
+  double get vocalMasterDuration => _vocalMasterDuration;
+  String get vocalMasterTitle => _vocalMasterTitle.isNotEmpty ? _vocalMasterTitle : (_vocalMasterRefName != null ? '${_vocalMasterRefName!.split('.').first} (Studio Master)' : 'Studio Vocal Master');
+  bool get vocalEnableDereverb => _vocalEnableDereverb;
+  String get vocalDereverbModel => _vocalDereverbModel;
+  double get vocalDereverbIntensity => _vocalDereverbIntensity;
+  double get vocalDenoiseThresholdDb => _vocalDenoiseThresholdDb;
+  bool get vocalEnableEnhancement => _vocalEnableEnhancement;
+  String get vocalEnhancerModel => _vocalEnhancerModel;
+  double get vocalParallelBlend => _vocalParallelBlend;
+  double get vocalAirBoost => _vocalAirBoost;
+  double get vocalBodyWarmth => _vocalBodyWarmth;
+  bool get vocalDeEsserEnabled => _vocalDeEsserEnabled;
+  bool get vocalEnableDawMaster => _vocalEnableDawMaster;
+  double get vocalLowCutHz => _vocalLowCutHz;
+  double get vocalBoxyMudCutHz => _vocalBoxyMudCutHz;
+  double get vocalBoxyMudGainDb => _vocalBoxyMudGainDb;
+  double get vocalCompressorRatio => _vocalCompressorRatio;
+  double get vocalCompressorMakeupDb => _vocalCompressorMakeupDb;
+  String get vocalStudioAmbienceType => _vocalStudioAmbienceType;
+  double get vocalAmbienceWetMix => _vocalAmbienceWetMix;
+  bool get isVocalMasterProcessing => _isVocalMasterProcessing;
+  double get vocalMasterProgress => _vocalMasterProgress;
+  String get vocalMasterMessage => _vocalMasterMessage;
+  Map<String, dynamic>? get lastVocalMasterResult => _lastVocalMasterResult;
+  String? get vocalMasterResultAudioUrl => _vocalMasterResultAudioUrl;
+
   // Generation status
   // Multi-task generation queue & new songs
   final List<GenerationTask> _activeTasks = [];
@@ -620,15 +688,31 @@ class AppStateProvider extends ChangeNotifier {
       return;
     }
 
-    final instName = _selectedInstrument.name.split('(').first.trim();
+    final instTurkishName = _selectedInstrument.name.split('(').first.trim();
+    final engName = _selectedInstrument.englishName.trim();
     final songTitle = instrumentTitle.isNotEmpty
         ? instrumentTitle
         : (_instrumentRefAudioName != null
-            ? '${_instrumentRefAudioName!.split('.').first} - $instName Solo'
-            : '$instName Solo');
+            ? '${_instrumentRefAudioName!.split('.').first} - $instTurkishName Solo'
+            : '$instTurkishName Solo');
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
-    final effectivePrompt = 'instrumental, no vocals, solo $instName, pure acoustic $instName solo, zero voice, no singer, $instrumentPrompt';
-    final effectiveNegative = 'vocals, singing, speech, voice, vocal, backing band, drums, rhythm, $instrumentNegativePrompt';
+
+    // High-precision English tag prompt for YuE2 conditioning:
+    final specificStyle = _instrumentPrompt.trim().isNotEmpty
+        ? _instrumentPrompt.trim()
+        : _selectedInstrument.promptStyle;
+    final effectivePrompt =
+        'genre: solo instrumental, style: solo $engName, instrument: $engName, '
+        'pure acoustic $engName solo, $specificStyle, '
+        'single player unaccompanied solo, dry acoustic studio isolation booth, '
+        'pristine acoustic resonance, zero vocals, no voice, no singer, no choir, no speech, no other instruments';
+
+    final specificNegative = _instrumentNegativePrompt.trim().isNotEmpty
+        ? _instrumentNegativePrompt.trim()
+        : _selectedInstrument.negativeStyle;
+    final effectiveNegative =
+        'vocals, singing, singing voice, speech, voice, vocal, singer, humming, chanting, choir, spoken word, talking, '
+        'backing band, drums, rhythm section, percussion, electric bass, chords, second instrument, $specificNegative';
 
     final task = GenerationTask(
       taskId: tempId,
@@ -639,14 +723,14 @@ class AppStateProvider extends ChangeNotifier {
       isInstrumental: true,
       progress: 5,
       status: 'processing',
-      message: '$instName tek enstrüman solo izolasyonu işleniyor...',
+      message: '$instTurkishName tek enstrüman solo izolasyonu işleniyor...',
     );
     _activeTasks.insert(0, task);
     notifyListeners();
 
     final taskId = await api.generateSong(
       title: songTitle,
-      lyrics: '[instrumental]',
+      lyrics: '', // Empty lyrics ensures YuE2 never attempts vocalization
       style: effectivePrompt,
       isCover: true,
       isInstrumental: true,
@@ -658,9 +742,9 @@ class AppStateProvider extends ChangeNotifier {
       excludeStyles: effectiveNegative,
       vocalGender: 'None',
       maxMode: _maxMode,
-      weirdness: 25,
-      styleInfluence: 90,
-      variety: 30,
+      weirdness: 20,
+      styleInfluence: 95,
+      variety: 25,
     );
 
     if (taskId != null) {
@@ -675,6 +759,211 @@ class AppStateProvider extends ChangeNotifier {
       });
     }
     notifyListeners();
+  }
+
+  // ==========================================
+  // Vocal Mix & Mastering Methods
+  // ==========================================
+  void setVocalMasterTitle(String title) {
+    _vocalMasterTitle = title;
+    notifyListeners();
+  }
+
+  void setVocalEnableDereverb(bool val) {
+    _vocalEnableDereverb = val;
+    notifyListeners();
+  }
+
+  void setVocalDereverbModel(String val) {
+    _vocalDereverbModel = val;
+    notifyListeners();
+  }
+
+  void setVocalDereverbIntensity(double val) {
+    _vocalDereverbIntensity = val;
+    notifyListeners();
+  }
+
+  void setVocalDenoiseThresholdDb(double val) {
+    _vocalDenoiseThresholdDb = val;
+    notifyListeners();
+  }
+
+  void setVocalEnableEnhancement(bool val) {
+    _vocalEnableEnhancement = val;
+    notifyListeners();
+  }
+
+  void setVocalEnhancerModel(String val) {
+    _vocalEnhancerModel = val;
+    notifyListeners();
+  }
+
+  void setVocalParallelBlend(double val) {
+    _vocalParallelBlend = val;
+    notifyListeners();
+  }
+
+  void setVocalAirBoost(double val) {
+    _vocalAirBoost = val;
+    notifyListeners();
+  }
+
+  void setVocalBodyWarmth(double val) {
+    _vocalBodyWarmth = val;
+    notifyListeners();
+  }
+
+  void setVocalDeEsserEnabled(bool val) {
+    _vocalDeEsserEnabled = val;
+    notifyListeners();
+  }
+
+  void setVocalEnableDawMaster(bool val) {
+    _vocalEnableDawMaster = val;
+    notifyListeners();
+  }
+
+  void setVocalLowCutHz(double val) {
+    _vocalLowCutHz = val;
+    notifyListeners();
+  }
+
+  void setVocalBoxyMudCutHz(double val) {
+    _vocalBoxyMudCutHz = val;
+    notifyListeners();
+  }
+
+  void setVocalBoxyMudGainDb(double val) {
+    _vocalBoxyMudGainDb = val;
+    notifyListeners();
+  }
+
+  void setVocalCompressorRatio(double val) {
+    _vocalCompressorRatio = val;
+    notifyListeners();
+  }
+
+  void setVocalCompressorMakeupDb(double val) {
+    _vocalCompressorMakeupDb = val;
+    notifyListeners();
+  }
+
+  void setVocalStudioAmbienceType(String val) {
+    _vocalStudioAmbienceType = val;
+    notifyListeners();
+  }
+
+  void setVocalAmbienceWetMix(double val) {
+    _vocalAmbienceWetMix = val;
+    notifyListeners();
+  }
+
+  void clearVocalMasterAudio() {
+    _vocalMasterRefPath = null;
+    _vocalMasterRefName = null;
+    _vocalMasterDuration = 0.0;
+    _lastVocalMasterResult = null;
+    _vocalMasterResultAudioUrl = null;
+    notifyListeners();
+  }
+
+  Future<void> pickVocalMasterAudio() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['mp3', 'wav', 'ogg', 'm4a', 'flac'],
+    );
+
+    if (result.isNotEmpty && result.first.path != null) {
+      final file = File(result.first.path!);
+      final uploadRes = await api.uploadAudio(file);
+      if (uploadRes != null && uploadRes['success'] == true) {
+        _vocalMasterRefPath = uploadRes['saved_path'];
+        _vocalMasterRefName = result.first.name;
+        _vocalMasterDuration = (uploadRes['duration'] is num)
+            ? (uploadRes['duration'] as num).toDouble()
+            : 30.0;
+        _vocalMasterTitle = '${result.first.name.split('.').first} (Studio Master)';
+        _lastVocalMasterResult = null;
+        _vocalMasterResultAudioUrl = null;
+        notifyListeners();
+      }
+    }
+  }
+
+  void setVocalMasterFromSong(Song song) {
+    _vocalMasterRefPath = song.audioUrl;
+    _vocalMasterRefName = '${song.title}.wav';
+    _vocalMasterDuration = song.durationSeconds.toDouble();
+    _vocalMasterTitle = '${song.title} (Studio Master)';
+    _lastVocalMasterResult = null;
+    _vocalMasterResultAudioUrl = null;
+    _activeTab = 'vocal_master';
+    notifyListeners();
+  }
+
+  Future<void> processVocalMastering() async {
+    if (_vocalMasterRefPath == null || _isVocalMasterProcessing) return;
+
+    _isVocalMasterProcessing = true;
+    _vocalMasterProgress = 0.15;
+    _vocalMasterMessage = 'Adım 1: Mel-Band RoFormer ile oda yankısı ve dip gürültüsü siliniyor...';
+    notifyListeners();
+
+    await Future.delayed(const Duration(milliseconds: 400));
+    _vocalMasterProgress = 0.45;
+    _vocalMasterMessage = 'Adım 2: Resemble-Enhance ile gövde ve Air frekansları sentezleniyor (Paralel %${(_vocalParallelBlend * 100).toInt()})...';
+    notifyListeners();
+
+    await Future.delayed(const Duration(milliseconds: 400));
+    _vocalMasterProgress = 0.75;
+    _vocalMasterMessage = 'Adım 3: Temizlik EQ (${_vocalLowCutHz.toInt()}Hz Low-cut & ${_vocalBoxyMudCutHz.toInt()}Hz Boxy Dip) + 4:1 VCA Kompresör + $_vocalStudioAmbienceType uygulanıyor...';
+    notifyListeners();
+
+    final payload = {
+      'file_path': _vocalMasterRefPath,
+      'title': vocalMasterTitle,
+      'save_to_library': true,
+      'enable_dereverb': _vocalEnableDereverb,
+      'dereverb_intensity': _vocalDereverbIntensity,
+      'denoise_threshold_db': _vocalDenoiseThresholdDb,
+      'dereverb_model': _vocalDereverbModel,
+      'enable_enhancement': _vocalEnableEnhancement,
+      'parallel_blend': _vocalParallelBlend,
+      'air_boost': _vocalAirBoost,
+      'body_warmth': _vocalBodyWarmth,
+      'de_esser_enabled': _vocalDeEsserEnabled,
+      'enhancer_model': _vocalEnhancerModel,
+      'enable_daw_master': _vocalEnableDawMaster,
+      'low_cut_hz': _vocalLowCutHz,
+      'boxy_mud_cut_hz': _vocalBoxyMudCutHz,
+      'boxy_mud_gain_db': _vocalBoxyMudGainDb,
+      'compressor_ratio': _vocalCompressorRatio,
+      'compressor_makeup_db': _vocalCompressorMakeupDb,
+      'studio_ambience_type': _vocalStudioAmbienceType,
+      'ambience_wet_mix': _vocalAmbienceWetMix,
+    };
+
+    final res = await api.masterVocal(payload);
+    _isVocalMasterProcessing = false;
+
+    if (res != null && res['success'] == true) {
+      _vocalMasterProgress = 1.0;
+      _vocalMasterMessage = 'Vokal stüdyo mastering tamamlandı! (${res['processing_time_sec']}s)';
+      _lastVocalMasterResult = res;
+      _vocalMasterResultAudioUrl = res['audio_url'];
+      // Refresh song list so it appears in library
+      await refreshSongs();
+      notifyListeners();
+    } else {
+      _vocalMasterProgress = 0.0;
+      _vocalMasterMessage = 'Hata: Vokal mastering gerçekleştirilemedi.';
+      notifyListeners();
+    }
+  }
+
+  Future<void> openVocalFolder() async {
+    await api.openVocalMasterFolder();
   }
 
   Future<void> checkBackendStatus() async {

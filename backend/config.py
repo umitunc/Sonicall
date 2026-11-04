@@ -9,10 +9,11 @@ COVERS_DIR = OUTPUT_DIR / "covers"
 UPLOADS_DIR = OUTPUT_DIR / "uploads"
 STEMS_DIR = OUTPUT_DIR / "stems"
 SHEETS_DIR = OUTPUT_DIR / "sheets"
+VOCAL_MASTER_DIR = OUTPUT_DIR / "vocal_mastering"
 DATA_FILE = BASE_DIR / "backend" / "data.json"
 SETTINGS_FILE = BASE_DIR / "backend" / "settings.json"
 
-for d in [OUTPUT_DIR, SONGS_DIR, COVERS_DIR, UPLOADS_DIR, STEMS_DIR, SHEETS_DIR]:
+for d in [OUTPUT_DIR, SONGS_DIR, COVERS_DIR, UPLOADS_DIR, STEMS_DIR, SHEETS_DIR, VOCAL_MASTER_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 candidate_model_dirs = [

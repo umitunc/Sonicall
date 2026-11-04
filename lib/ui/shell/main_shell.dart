@@ -4,6 +4,7 @@ import '../../providers/app_state_provider.dart';
 import '../sidebar/sidebar_widget.dart';
 import '../studio/studio_panel.dart';
 import '../studio/instrument_transform_panel.dart';
+import '../studio/vocal_mastering_panel.dart';
 import '../workspace/workspace_panel.dart';
 import '../player/bottom_player_widget.dart';
 
@@ -13,6 +14,10 @@ class MainShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeTab = context.select<AppStateProvider, String>((p) => p.activeTab);
+
+    final panelIndex = activeTab == 'vocal_master'
+        ? 2
+        : (activeTab == 'instrument' ? 1 : 0);
 
     return Scaffold(
       body: Column(
@@ -24,12 +29,13 @@ class MainShell extends StatelessWidget {
                 // 1. Left Navigation Sidebar
                 const SidebarWidget(),
 
-                // 2. Middle Creation Studio or Instrument Panel
+                // 2. Middle Creation Studio, Instrument or Vocal Master Panel
                 IndexedStack(
-                  index: activeTab == 'instrument' ? 1 : 0,
+                  index: panelIndex,
                   children: const [
                     StudioPanel(),
                     InstrumentTransformPanel(),
+                    VocalMasteringPanel(),
                   ],
                 ),
 

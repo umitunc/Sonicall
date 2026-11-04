@@ -109,6 +109,14 @@ class SidebarWidget extends StatelessWidget {
           ),
           _buildNavItem(
             context,
+            icon: Icons.graphic_eq_rounded,
+            label: 'Vokal Mix & Master',
+            id: 'vocal_master',
+            isSelected: state.activeTab == 'vocal_master',
+            onTap: () => state.setActiveTab('vocal_master'),
+          ),
+          _buildNavItem(
+            context,
             icon: Icons.library_music_rounded,
             label: 'Kütüphanem',
             id: 'library',
