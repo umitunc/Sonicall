@@ -11,7 +11,7 @@ import '../services/style_service.dart';
 
 enum StudioCategory { songs, speech, sounds }
 enum StudioMode { simple, advanced }
-enum LibraryFilter { all, covers, liked, instrumental }
+enum LibraryFilter { all, covers, instrumental, vocalMaster, liked }
 
 class AppStateProvider extends ChangeNotifier {
   final ApiService api = ApiService();
@@ -1233,8 +1233,9 @@ class AppStateProvider extends ChangeNotifier {
     return _songs.where((song) {
       // Filter by category
       if (_libraryFilter == LibraryFilter.covers && !song.isCover) return false;
-      if (_libraryFilter == LibraryFilter.liked && !song.liked) return false;
       if (_libraryFilter == LibraryFilter.instrumental && !song.isInstrumental) return false;
+      if (_libraryFilter == LibraryFilter.vocalMaster && !song.isVocalMaster) return false;
+      if (_libraryFilter == LibraryFilter.liked && !song.liked) return false;
 
       // Filter by search query
       if (_searchQuery.trim().isNotEmpty) {

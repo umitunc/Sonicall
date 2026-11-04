@@ -13,6 +13,38 @@ class BottomPlayerWidget extends StatelessWidget {
     return '$minutes:$seconds';
   }
 
+  List<Color> _getThumbnailGradient({
+    bool isVocalMaster = false,
+    bool isInstrumental = false,
+    bool isCover = false,
+  }) {
+    if (isVocalMaster) {
+      return const [Color(0xFF059669), Color(0xFF06B6D4)];
+    } else if (isInstrumental) {
+      return const [Color(0xFF4F46E5), Color(0xFF8B5CF6)];
+    } else if (isCover) {
+      return const [Color(0xFF2563EB), Color(0xFF0284C7)];
+    } else {
+      return const [Color(0xFFFF6A00), Color(0xFFEE0979)];
+    }
+  }
+
+  IconData _getThumbnailIcon({
+    bool isVocalMaster = false,
+    bool isInstrumental = false,
+    bool isCover = false,
+  }) {
+    if (isVocalMaster) {
+      return Icons.graphic_eq_rounded;
+    } else if (isInstrumental) {
+      return Icons.piano_rounded;
+    } else if (isCover) {
+      return Icons.album_rounded;
+    } else {
+      return Icons.music_note_rounded;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppStateProvider>();
@@ -64,12 +96,37 @@ class BottomPlayerWidget extends StatelessWidget {
                             height: 50,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
-                              gradient: const LinearGradient(
-                                colors: [AppColors.primary, AppColors.secondary],
+                              gradient: LinearGradient(
+                                colors: _getThumbnailGradient(
+                                  isVocalMaster: song.isVocalMaster,
+                                  isInstrumental: song.isInstrumental,
+                                  isCover: song.isCover,
+                                ),
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _getThumbnailGradient(
+                                    isVocalMaster: song.isVocalMaster,
+                                    isInstrumental: song.isInstrumental,
+                                    isCover: song.isCover,
+                                  )[0].withValues(alpha: 0.35),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            child: const Center(
-                              child: Icon(Icons.music_note_rounded, color: Colors.white, size: 24),
+                            child: Center(
+                              child: Icon(
+                                _getThumbnailIcon(
+                                  isVocalMaster: song.isVocalMaster,
+                                  isInstrumental: song.isInstrumental,
+                                  isCover: song.isCover,
+                                ),
+                                color: Colors.white,
+                                size: 24,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),

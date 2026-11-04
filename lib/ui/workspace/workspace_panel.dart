@@ -122,11 +122,13 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
                 // Filter Pills
                 _buildFilterChip('Hepsi', LibraryFilter.all, state),
                 const SizedBox(width: 6),
-                _buildFilterChip('Cover', LibraryFilter.covers, state),
+                _buildFilterChip('Cover', LibraryFilter.covers, state, accentColor: const Color(0xFF2563EB)),
                 const SizedBox(width: 6),
-                _buildFilterChip('Beğenilenler', LibraryFilter.liked, state),
+                _buildFilterChip('Enstrümantal', LibraryFilter.instrumental, state, accentColor: const Color(0xFF7C3AED)),
                 const SizedBox(width: 6),
-                _buildFilterChip('Enstrümantal', LibraryFilter.instrumental, state),
+                _buildFilterChip('Vokal Master', LibraryFilter.vocalMaster, state, accentColor: const Color(0xFF059669)),
+                const SizedBox(width: 6),
+                _buildFilterChip('Beğenilenler', LibraryFilter.liked, state, accentColor: const Color(0xFFEF4444)),
               ],
             ),
           ),
@@ -142,6 +144,7 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
                   // Respect active library filters
                   if (state.libraryFilter == LibraryFilter.covers && !t.isCover) return false;
                   if (state.libraryFilter == LibraryFilter.instrumental && !t.isInstrumental) return false;
+                  if (state.libraryFilter == LibraryFilter.vocalMaster && !t.isVocalMaster) return false;
                   return true;
                 }).toList();
 
@@ -200,19 +203,65 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
     );
   }
 
-  Widget _buildFilterChip(String label, LibraryFilter filter, AppStateProvider state) {
+  static List<Color> getThumbnailGradient({
+    bool isVocalMaster = false,
+    bool isInstrumental = false,
+    bool isCover = false,
+  }) {
+    if (isVocalMaster) {
+      // Emerald to Cyan for Vocal Mix & Master
+      return const [Color(0xFF059669), Color(0xFF06B6D4)];
+    } else if (isInstrumental) {
+      // Indigo to Purple/Violet for Enstrüman
+      return const [Color(0xFF4F46E5), Color(0xFF8B5CF6)];
+    } else if (isCover) {
+      // Electric Blue to Sky for Stüdyo & Cover
+      return const [Color(0xFF2563EB), Color(0xFF0284C7)];
+    } else {
+      // Warm Sunset Orange to Magenta for AI Music / Songs
+      return const [Color(0xFFFF6A00), Color(0xFFEE0979)];
+    }
+  }
+
+  static IconData getThumbnailIcon({
+    bool isVocalMaster = false,
+    bool isInstrumental = false,
+    bool isCover = false,
+  }) {
+    if (isVocalMaster) {
+      return Icons.graphic_eq_rounded;
+    } else if (isInstrumental) {
+      return Icons.piano_rounded;
+    } else if (isCover) {
+      return Icons.album_rounded;
+    } else {
+      return Icons.music_note_rounded;
+    }
+  }
+
+  Widget _buildFilterChip(String label, LibraryFilter filter, AppStateProvider state, {Color? accentColor}) {
     final selected = state.libraryFilter == filter;
+    final color = accentColor ?? AppColors.primary;
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: () => state.setLibraryFilter(filter),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : Colors.transparent,
+          color: selected ? color : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: selected ? AppColors.primary : Colors.grey.withOpacity(0.3),
+            color: selected ? color : Colors.grey.withValues(alpha: 0.3),
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
@@ -265,7 +314,11 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
                 gradient: LinearGradient(
                   colors: isQueued
                       ? [const Color(0xFF2C2C34), const Color(0xFF1E1E24)]
-                      : [const Color(0xFFFF6A00), const Color(0xFFEE0979)],
+                      : getThumbnailGradient(
+                          isVocalMaster: task.isVocalMaster,
+                          isInstrumental: task.isInstrumental,
+                          isCover: task.isCover,
+                        ),
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -479,15 +532,36 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
                     height: 70,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFF6A00), Color(0xFFEE0979)],
+                      gradient: LinearGradient(
+                        colors: getThumbnailGradient(
+                          isVocalMaster: song.isVocalMaster,
+                          isInstrumental: song.isInstrumental,
+                          isCover: song.isCover,
+                        ),
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: getThumbnailGradient(
+                            isVocalMaster: song.isVocalMaster,
+                            isInstrumental: song.isInstrumental,
+                            isCover: song.isCover,
+                          )[0].withValues(alpha: 0.28),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Center(
                       child: Icon(
-                        song.isCover ? Icons.graphic_eq_rounded : Icons.album_rounded,
+                        getThumbnailIcon(
+                          isVocalMaster: song.isVocalMaster,
+                          isInstrumental: song.isInstrumental,
+                          isCover: song.isCover,
+                        ),
                         size: 32,
-                        color: Colors.white,
+                        color: Colors.white.withValues(alpha: 0.92),
                       ),
                     ),
                   ),
@@ -545,6 +619,24 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
                             ),
                           ),
                         ),
+                        if (song.isVocalMaster) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'VOCAL MASTER',
+                              style: TextStyle(
+                                color: Color(0xFF10B981),
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                         if (song.isCover) ...[
                           const SizedBox(width: 8),
                           Container(
@@ -563,18 +655,18 @@ class _WorkspacePanelState extends State<WorkspacePanel> {
                             ),
                           ),
                         ],
-                        if (song.isInstrumental) ...[
+                        if (song.isInstrumental && !song.isVocalMaster) ...[
                           const SizedBox(width: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.purple.withValues(alpha: 0.18),
+                              color: const Color(0xFF8B5CF6).withValues(alpha: 0.18),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
                               'INST',
                               style: TextStyle(
-                                color: Colors.purpleAccent,
+                                color: const Color(0xFFA78BFA),
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.bold,
                               ),

@@ -5,6 +5,7 @@ class Song {
   final String lyrics;
   final bool isCover;
   final bool isInstrumental;
+  final bool isVocalMaster;
   final String model;
   final int durationSeconds;
   final String durationFormatted;
@@ -29,6 +30,7 @@ class Song {
     required this.lyrics,
     required this.isCover,
     required this.isInstrumental,
+    this.isVocalMaster = false,
     required this.model,
     required this.durationSeconds,
     required this.durationFormatted,
@@ -47,6 +49,10 @@ class Song {
       stemsMap = Map<String, String>.from(json['stems']);
     }
 
+    final isVocal = json['is_vocal_master'] == true ||
+        (json['style']?.toString().toLowerCase().contains('vocal master') ?? false) ||
+        (json['title']?.toString().toLowerCase().contains('(studio master)') ?? false);
+
     return Song(
       id: json['id'] ?? '',
       title: json['title'] ?? 'Untitled',
@@ -54,6 +60,7 @@ class Song {
       lyrics: json['lyrics'] ?? '',
       isCover: json['is_cover'] ?? false,
       isInstrumental: json['is_instrumental'] ?? false,
+      isVocalMaster: isVocal,
       model: json['model'] ?? 'YuE2 3B',
       durationSeconds: json['duration_seconds'] ?? 45,
       durationFormatted: json['duration_formatted'] ?? '00:45',
@@ -75,6 +82,7 @@ class Song {
       'lyrics': lyrics,
       'is_cover': isCover,
       'is_instrumental': isInstrumental,
+      'is_vocal_master': isVocalMaster,
       'model': model,
       'duration_seconds': durationSeconds,
       'duration_formatted': durationFormatted,
@@ -163,6 +171,7 @@ class GenerationTask {
   final String model;
   final bool isCover;
   final bool isInstrumental;
+  final bool isVocalMaster;
   int progress;
   String status; // 'queued', 'processing', 'completed', 'error'
   String message;
@@ -175,6 +184,7 @@ class GenerationTask {
     required this.model,
     required this.isCover,
     required this.isInstrumental,
+    this.isVocalMaster = false,
     this.progress = 5,
     this.status = 'processing',
     this.message = 'Sıraya alındı...',
