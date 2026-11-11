@@ -97,16 +97,16 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
     }).toList();
 
     return Container(
-      width: 440,
+      width: 420,
       decoration: BoxDecoration(
         color: panelBg,
         border: Border(right: BorderSide(color: borderColor, width: 1)),
       ),
       child: Column(
         children: [
-          // Header (Clean, overflow-safe)
+          // Header (Clean, compact, overflow-safe)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: borderColor, width: 1)),
               gradient: LinearGradient(
@@ -120,8 +120,8 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
             child: Row(
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFF6366F1), Color(0xFFEC4899)],
@@ -129,67 +129,37 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
                   child: const Center(
-                    child: Icon(Icons.piano_rounded, color: Colors.white, size: 19),
+                    child: Icon(Icons.piano_rounded, color: Colors.white, size: 18),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'Sesi Enstrümana Dönüştür',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w800,
-                                color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'Solo Studio',
-                              style: TextStyle(
-                                fontSize: 8.5,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF10B981),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Step-by-step: Model, referans ses ve enstrüman seçimi.',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                  child: Text(
+                    'Enstrüman Stüdyosu',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: const Text(
+                    'Solo',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF10B981),
+                    ),
                   ),
                 ),
               ],
@@ -227,12 +197,11 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
       ),
       child: Row(
         children: [
-          // Step 1: Model
           Expanded(
             child: _buildWizardTabItem(
               stepIndex: 0,
-              icon: Icons.memory_rounded,
-              title: '1. Model',
+              icon: Icons.hub_rounded,
+              title: 'Model',
               subtitle: _getShortModelName(state.selectedModel),
               isSelected: _currentStep == 0,
               isCompleted: true,
@@ -240,32 +209,26 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
               onTap: () => setState(() => _currentStep = 0),
             ),
           ),
-          const SizedBox(width: 4),
-          Icon(Icons.chevron_right_rounded, size: 14, color: isDark ? Colors.white24 : Colors.black26),
-          const SizedBox(width: 4),
-          // Step 2: Ses & BPM
+          const SizedBox(width: 6),
           Expanded(
             child: _buildWizardTabItem(
               stepIndex: 1,
-              icon: Icons.graphic_eq_rounded,
-              title: '2. Ses & BPM',
-              subtitle: state.instrumentRefAudioPath != null ? '${state.instrumentBpm} BPM' : 'Ses Yükle',
+              icon: Icons.mic_rounded,
+              title: 'Ses',
+              subtitle: state.instrumentRefAudioPath != null ? '${state.instrumentBpm} BPM' : 'Seç / Kaydet',
               isSelected: _currentStep == 1,
               isCompleted: state.instrumentRefAudioPath != null,
               isDark: isDark,
               onTap: () => setState(() => _currentStep = 1),
             ),
           ),
-          const SizedBox(width: 4),
-          Icon(Icons.chevron_right_rounded, size: 14, color: isDark ? Colors.white24 : Colors.black26),
-          const SizedBox(width: 4),
-          // Step 3: Enstrüman
+          const SizedBox(width: 6),
           Expanded(
             child: _buildWizardTabItem(
               stepIndex: 2,
               icon: Icons.piano_rounded,
-              title: '3. Enstrüman',
-              subtitle: '${state.selectedInstrument.emoji} ${state.selectedInstrument.name.split('(').first.trim()}',
+              title: 'Enstrüman',
+              subtitle: state.selectedInstrument.name.split('(').first.trim(),
               isSelected: _currentStep == 2,
               isCompleted: state.instrumentRefAudioPath != null,
               isDark: isDark,
@@ -362,11 +325,11 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
   }
 
   String _getShortModelName(String model) {
-    if (model.toLowerCase().contains('7b')) return 'YuE 7B BF16';
-    if (model.toLowerCase().contains('ace')) return 'ACE-Step';
+    if (model.toLowerCase().contains('7b')) return 'YuE2 7B';
+    if (model.toLowerCase().contains('ace')) return 'ACE-Step 1.5 XL';
     if (model.toLowerCase().contains('diff')) return 'DiffRhythm';
     if (model.toLowerCase().contains('studio')) return 'YuE2 Studio';
-    return 'YuE 3B INT8';
+    return 'YuE2 3B';
   }
 
   // -------------------------------------------------------------
@@ -506,9 +469,13 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
             child: ElevatedButton.icon(
               onPressed: () => setState(() => _currentStep = 1),
               icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-              label: Text(
-                'Sonraki Adım: Referans Ses ve BPM (${_getShortModelName(state.selectedModel)})',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              label: Flexible(
+                child: Text(
+                  'Ses & Tempo (${_getShortModelName(state.selectedModel)})',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6366F1),
@@ -1052,14 +1019,18 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
                                           ),
                                           const SizedBox(width: 6),
                                         ],
-                                        Text(
-                                          isCurrentTrack
-                                              ? '${_formatDuration(currentPosSec)} / ${_formatDuration(totalDurSec)} | ${state.instrumentBpm} BPM'
-                                              : 'Süre: ${_formatDuration(state.instrumentAudioDuration)} | ${state.instrumentBpm} BPM',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF047857),
-                                            fontWeight: FontWeight.w600,
+                                        Flexible(
+                                          child: Text(
+                                            isCurrentTrack
+                                                ? '${_formatDuration(currentPosSec)} / ${_formatDuration(totalDurSec)} • ${state.instrumentBpm} BPM'
+                                                : '${_formatDuration(state.instrumentAudioDuration)} • ${state.instrumentBpm} BPM',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF047857),
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -1155,47 +1126,37 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
                         const Icon(Icons.speed_rounded, size: 18, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Row(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Text(
-                                'Tempo: ${state.instrumentBpm} BPM',
+                                '${state.instrumentBpm} BPM',
                                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                               ),
-                              const SizedBox(width: 8),
-                              if (state.isDetectingBpm) ...[
-                                const SizedBox(
-                                  width: 12,
-                                  height: 12,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                ),
-                                const SizedBox(width: 6),
-                                const Text('Algılanıyor...', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                              ] else if (state.detectedBpm != null) ...[
+                              if (state.isDetectingBpm)
+                                const Text('Algılanıyor...', style: TextStyle(fontSize: 11, color: Colors.grey))
+                              else if (state.detectedBpm != null)
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF10B981).withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.bolt_rounded, size: 11, color: Color(0xFF10B981)),
-                                      Text(
-                                        'Otomatik Algılandı (${state.detectedBpm})',
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF10B981),
-                                        ),
-                                      ),
-                                    ],
+                                  child: Text(
+                                    'Otomatik (${state.detectedBpm})',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF10B981),
+                                    ),
                                   ),
                                 ),
-                              ],
                             ],
                           ),
                         ),
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
@@ -1203,8 +1164,8 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            'Süre: ${_formatDuration(state.instrumentAudioDuration)}',
-                            style: TextStyle(
+                            _formatDuration(state.instrumentAudioDuration),
+                            style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                               color: AppColors.primary,
@@ -1815,12 +1776,16 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
                                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
                                   ),
                                   const SizedBox(width: 8),
-                                  Text(
-                                    'Dönüştürülüyor... (%${state.generationProgress})',
-                                    style: const TextStyle(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
+                                  Flexible(
+                                    child: Text(
+                                      'Stüdyoda Çalınıyor (%${state.generationProgress})',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 13.0,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
                                 ] else ...[
@@ -1832,8 +1797,8 @@ class _InstrumentTransformPanelState extends State<InstrumentTransformPanel> {
                                   Flexible(
                                     child: Text(
                                       state.instrumentRefAudioPath == null
-                                          ? 'Önce Ses Yükleyin veya Kaydedin'
-                                          : '${state.selectedInstrument.name.split('(').first.trim()} ile Dönüştür (${_formatDuration(state.instrumentAudioDuration)})',
+                                          ? 'Önce Ses Seçin'
+                                          : '${state.selectedInstrument.name.split('(').first.trim()} ile Çal (${_formatDuration(state.instrumentAudioDuration)})',
                                       style: TextStyle(
                                         fontSize: 13.0,
                                         fontWeight: FontWeight.w700,

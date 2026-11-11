@@ -92,9 +92,9 @@ class _StudioPanelState extends State<StudioPanel> {
       ),
       child: Column(
         children: [
-          // Top Category Tabs: Songs | Speech | Sounds
+          // Top Mode Tabs (Icon + Short Label)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: borderColor, width: 1)),
             ),
@@ -102,30 +102,26 @@ class _StudioPanelState extends State<StudioPanel> {
               children: [
                 _buildCategoryTab(
                   context,
-                  label: '🎵 Şarkı',
+                  icon: Icons.music_note_rounded,
+                  label: 'Şarkı',
                   selected: state.category == StudioCategory.songs,
                   onTap: () => state.setCategory(StudioCategory.songs),
                 ),
                 const SizedBox(width: 6),
                 _buildCategoryTab(
                   context,
-                  label: '🎻 Enstrüman',
+                  icon: Icons.piano_rounded,
+                  label: 'Enstrüman',
                   selected: false,
                   onTap: () => state.setActiveTab('instrument'),
                 ),
                 const SizedBox(width: 6),
                 _buildCategoryTab(
                   context,
-                  label: '🎙️ Konuşma',
-                  selected: state.category == StudioCategory.speech,
-                  onTap: () => state.setCategory(StudioCategory.speech),
-                ),
-                const SizedBox(width: 6),
-                _buildCategoryTab(
-                  context,
-                  label: '🔊 Efekt',
-                  selected: state.category == StudioCategory.sounds,
-                  onTap: () => state.setCategory(StudioCategory.sounds),
+                  icon: Icons.graphic_eq_rounded,
+                  label: 'Vokal Miks',
+                  selected: false,
+                  onTap: () => state.setActiveTab('vocal_master'),
                 ),
               ],
             ),
@@ -169,14 +165,14 @@ class _StudioPanelState extends State<StudioPanel> {
 
                 const SizedBox(height: 16),
 
-                // Quick Action Chips: + Audio (Cover), 🎙️ Ses Kaydet, + Voice, + Inspo
+                // Quick Action Chips (Icon + Short Label)
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
                       _buildActionChip(
                         icon: Icons.audio_file_rounded,
-                        label: state.isCover ? 'Cover: ${state.refAudioName}' : '+ Audio (Cover)',
+                        label: state.isCover ? '${state.refAudioName}' : 'Ses Ekle',
                         isActive: state.isCover,
                         onTap: () => state.pickReferenceAudio(),
                       ),
@@ -184,17 +180,16 @@ class _StudioPanelState extends State<StudioPanel> {
                         const SizedBox(width: 4),
                         IconButton(
                           icon: const Icon(Icons.close_rounded, size: 16),
-                          tooltip: 'Cover Referansını Kaldır',
+                          tooltip: 'Kaldır',
                           onPressed: () => state.clearReferenceAudio(),
                         ),
                       ],
                       const SizedBox(width: 8),
-                      // Mikrofondan Ses Kaydetme Butonu (Enstrümana Dönüştür sayfasındaki gibi)
                       _buildActionChip(
                         icon: state.isStudioRecordingMic ? Icons.stop_rounded : Icons.mic_rounded,
                         label: state.isStudioRecordingMic
-                            ? '⏹️ Kaydı Durdur (${_formatDuration(state.studioMicRecordElapsedSec)})'
-                            : '🎙️ + Ses Kaydet',
+                            ? 'Durdur (${_formatDuration(state.studioMicRecordElapsedSec)})'
+                            : 'Mikrofon',
                         isActive: state.isStudioRecordingMic,
                         activeColor: const Color(0xFFEF4444),
                         onTap: () {
@@ -208,28 +203,19 @@ class _StudioPanelState extends State<StudioPanel> {
                       const SizedBox(width: 8),
                       _buildActionChip(
                         icon: Icons.piano_rounded,
-                        label: '🎻 Enstrümana Dönüştür',
+                        label: 'Enstrüman',
                         isActive: false,
                         onTap: () => state.setActiveTab('instrument'),
                       ),
                       const SizedBox(width: 8),
                       _buildActionChip(
-                        icon: Icons.mic_external_on_rounded,
-                        label: '+ Vokal',
-                        isActive: false,
-                        onTap: () {
-                          _styleController.text += ', Güçlü Kadın Vokal, Reverb';
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      _buildActionChip(
                         icon: Icons.auto_awesome_rounded,
-                        label: '+ İlham',
+                        label: 'Örnek Tarz',
                         isActive: false,
                         onTap: () {
                           _styleController.text = '80s Synthwave, Nostalgic Synth, Driving Bass, Analog Drums';
                           _titleController.text = 'Gece Sürüşü';
-                          _lyricsController.text = '[Intro]\n(Sentezleyici dalgaları ve 120 BPM tempo)\n\n[Verse 1]\nNeon ışıklar altında bir şehir\nGecenin içinde kaybolan anılar...';
+                          _lyricsController.text = '[Intro]\n[Verse 1]\nNeon ışıklar altında bir şehir\nGecenin içinde kaybolan anılar...';
                         },
                       ),
                     ],
@@ -406,7 +392,7 @@ class _StudioPanelState extends State<StudioPanel> {
                                                 borderRadius: BorderRadius.circular(4),
                                               ),
                                               child: const Text(
-                                                'Önizleme Çalıyor',
+                                                'Çalıyor',
                                                 style: TextStyle(
                                                   fontSize: 8.5,
                                                   fontWeight: FontWeight.bold,
@@ -416,14 +402,18 @@ class _StudioPanelState extends State<StudioPanel> {
                                             ),
                                             const SizedBox(width: 4),
                                           ],
-                                          Text(
-                                            isCurrentTrack
-                                                ? '${_formatDuration(currentPosSec)} / ${_formatDuration(totalDurSec)} | ${state.bpm} BPM'
-                                                : 'Süre: ${_formatDuration(state.refAudioDuration)} | ${state.bpm} BPM',
-                                            style: TextStyle(
-                                              fontSize: 10.5,
-                                              color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
-                                              fontWeight: FontWeight.w600,
+                                          Flexible(
+                                            child: Text(
+                                              isCurrentTrack
+                                                  ? '${_formatDuration(currentPosSec)} / ${_formatDuration(totalDurSec)} • ${state.bpm} BPM'
+                                                  : '${_formatDuration(state.refAudioDuration)} • ${state.bpm} BPM',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 10.5,
+                                                color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -434,36 +424,37 @@ class _StudioPanelState extends State<StudioPanel> {
                                 // Önizleme Durdur Butonu
                                 if (isCurrentTrack && (isPlaying || state.audio.position > Duration.zero)) ...[
                                   IconButton(
-                                    icon: const Icon(Icons.stop_rounded, size: 18),
-                                    tooltip: 'Önizlemeyi Durdur',
+                                    visualDensity: VisualDensity.compact,
+                                    icon: const Icon(Icons.stop_rounded, size: 17),
+                                    tooltip: 'Durdur',
                                     color: Colors.redAccent,
                                     onPressed: () => state.audio.stop(),
                                   ),
                                 ],
-                                // Mikrofonla Tekrar Kaydet
                                 IconButton(
-                                  icon: const Icon(Icons.mic_rounded, size: 18),
-                                  tooltip: 'Mikrofonla Yeniden Kaydet',
+                                  visualDensity: VisualDensity.compact,
+                                  icon: const Icon(Icons.mic_rounded, size: 17),
+                                  tooltip: 'Yeniden Kaydet',
                                   color: const Color(0xFFEC4899),
                                   onPressed: () {
                                     if (isCurrentTrack) state.audio.stop();
                                     state.startStudioMicRecording();
                                   },
                                 ),
-                                // Dosya Değiştir
                                 IconButton(
-                                  icon: const Icon(Icons.folder_open_rounded, size: 18),
-                                  tooltip: 'Başka Dosya Seç',
+                                  visualDensity: VisualDensity.compact,
+                                  icon: const Icon(Icons.folder_open_rounded, size: 17),
+                                  tooltip: 'Dosya Seç',
                                   color: const Color(0xFF3B82F6),
                                   onPressed: () {
                                     if (isCurrentTrack) state.audio.stop();
                                     state.pickReferenceAudio();
                                   },
                                 ),
-                                // Referansı Temizle
                                 IconButton(
-                                  icon: const Icon(Icons.close_rounded, size: 18),
-                                  tooltip: 'Cover Referansını Kaldır',
+                                  visualDensity: VisualDensity.compact,
+                                  icon: const Icon(Icons.close_rounded, size: 17),
+                                  tooltip: 'Kaldır',
                                   onPressed: () => state.clearReferenceAudio(),
                                 ),
                               ],
@@ -489,14 +480,16 @@ class _StudioPanelState extends State<StudioPanel> {
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 5),
                             Row(
                               children: [
                                 const Icon(Icons.auto_mode_rounded, size: 13, color: Color(0xFF3B82F6)),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    'SheetSage2 melodi transferi aktif. Referans sesin melodisi birebir çıkarılarak yeni tarzda söylenecek.',
+                                    'Melodi ve ritim referanstan aktarılacak',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize: 10.5,
                                       color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF),
@@ -848,57 +841,68 @@ class _StudioPanelState extends State<StudioPanel> {
             child: Column(
               children: [
                 if (state.isGenerating) ...[
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.primary,
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: isDark ? 0.12 : 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              state.generationMessage,
-                              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                state.generationMessage.isNotEmpty
+                                    ? state.generationMessage
+                                    : 'Stüdyo hazırlanıyor...',
+                                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                          Text(
-                            '${state.generationProgress}%',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
+                            const SizedBox(width: 6),
+                            Text(
+                              '${state.generationProgress}%',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: state.generationProgress / 100.0,
-                          backgroundColor: isDark ? AppColors.darkCard : const Color(0xFFE5E7EB),
-                          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                          minHeight: 6,
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: state.generationProgress / 100.0,
+                            backgroundColor: isDark ? AppColors.darkCard : const Color(0xFFE5E7EB),
+                            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                            minHeight: 5,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
 
                 // Action Create Button
                 SizedBox(
                   width: double.infinity,
-                  height: 48,
+                  height: 46,
                   child: ElevatedButton(
                     onPressed: () => state.startGeneration(),
                     style: ElevatedButton.styleFrom(
@@ -918,26 +922,31 @@ class _StudioPanelState extends State<StudioPanel> {
                       ),
                       child: Container(
                         alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
                               state.isCover ? Icons.graphic_eq_rounded : Icons.music_note_rounded,
                               color: Colors.white,
-                              size: 20,
+                              size: 19,
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              state.isGenerating
-                                  ? '+ Sıraya Ekle (${state.activeTasks.length} Kuyrukta)'
-                                  : (state.isCover
-                                      ? 'Cover Şarkı Üret (${state.isAutoDuration ? "Auto" : _formatDuration(state.duration)})'
-                                      : 'Şarkı Üret (${state.isAutoDuration ? "Auto" : _formatDuration(state.duration)})'),
-                              style: const TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                letterSpacing: 0.5,
+                            Flexible(
+                              child: Text(
+                                state.isGenerating
+                                    ? 'Sıraya Ekle (${state.activeTasks.length})'
+                                    : (state.isCover
+                                        ? 'Cover Üret (${state.isAutoDuration ? "Otomatik" : _formatDuration(state.duration)})'
+                                        : 'Üret (${state.isAutoDuration ? "Otomatik" : _formatDuration(state.duration)})'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                  letterSpacing: 0.3,
+                                ),
                               ),
                             ),
                           ],
@@ -1374,36 +1383,48 @@ class _StudioPanelState extends State<StudioPanel> {
 
   Widget _buildCategoryTab(
     BuildContext context, {
+    required IconData icon,
     required String label,
     required bool selected,
     required VoidCallback onTap,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fg = selected
+        ? (isDark ? Colors.white : AppColors.primary)
+        : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary);
     return Expanded(
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected
-                ? (isDark ? const Color(0xFF26262E) : const Color(0xFFE5E7EB))
+                ? (isDark ? const Color(0xFF26262E) : AppColors.primary.withValues(alpha: 0.10))
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-              color: selected
-                  ? (isDark ? Colors.white : AppColors.lightTextPrimary)
-                  : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: selected ? AppColors.primary : fg),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    color: fg,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
