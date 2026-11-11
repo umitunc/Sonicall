@@ -92,29 +92,33 @@ class AudioAnalyzeRequest(BaseModel):
 
 class VocalMasterRequest(BaseModel):
     file_path: str
-    title: Optional[str] = "Mastered Studio Vocal"
+    title: Optional[str] = "Stüdyo Vokal Miks"
     save_to_library: bool = True
+    target_engine: str = "ace_step_15_xl"
+    backing_audio_path: Optional[str] = None
+    backing_mix_level: float = 0.78
+    vocal_gain_db: float = 0.5
     # Step 1: De-Reverb & De-Noise
     enable_dereverb: bool = True
-    dereverb_intensity: float = 0.85
+    dereverb_intensity: float = 0.82
     denoise_threshold_db: float = -38.0
     dereverb_model: str = "anvuew/dereverb_mel_band_roformer"
     # Step 2: Vocal Enhancement
     enable_enhancement: bool = True
     parallel_blend: float = 0.45
-    air_boost: float = 0.60
-    body_warmth: float = 0.50
+    air_boost: float = 0.58
+    body_warmth: float = 0.48
     de_esser_enabled: bool = True
     enhancer_model: str = "ResembleAI/resemble-enhance"
     # Step 3: DAW Studio Mastering
     enable_daw_master: bool = True
     low_cut_hz: float = 85.0
-    boxy_mud_cut_hz: float = 380.0
+    boxy_mud_cut_hz: float = 365.0
     boxy_mud_gain_db: float = -3.5
     compressor_ratio: float = 4.0
-    compressor_makeup_db: float = 3.5
+    compressor_makeup_db: float = 3.2
     studio_ambience_type: str = "Plate Reverb"
-    ambience_wet_mix: float = 0.14
+    ambience_wet_mix: float = 0.12
 
 @app.get("/")
 def root():
@@ -427,7 +431,11 @@ def master_vocal(req: VocalMasterRequest):
     try:
         res = vocal_mastering_service.process_vocal(
             input_audio_path=req.file_path,
-            title=req.title or "Mastered Studio Vocal",
+            title=req.title or "Stüdyo Vokal Miks",
+            target_engine=req.target_engine,
+            backing_audio_path=req.backing_audio_path,
+            backing_mix_level=req.backing_mix_level,
+            vocal_gain_db=req.vocal_gain_db,
             enable_dereverb=req.enable_dereverb,
             dereverb_intensity=req.dereverb_intensity,
             denoise_threshold_db=req.denoise_threshold_db,
@@ -449,23 +457,30 @@ def master_vocal(req: VocalMasterRequest):
         )
 
         if req.save_to_library and res.get("success"):
-            # Add to data.json so it is accessible in Kütüphanem (Workspace)
             db = get_db()
+            engine_lbl = res.get("engine_label", "Stüdyo Miks")
+            mix_mode = "Vokal + Enstrümantal Miks" if res.get("mixed_with_backing") else "Stüdyo Vokal Master"
             song_record = {
                 "id": res["id"],
                 "title": res["title"],
-                "prompt": f"Vocal Mastering: {req.dereverb_model.split('/')[-1]} -> {req.enhancer_model.split('/')[-1]} -> 4:1 Comp + {req.studio_ambience_type}",
-                "style": "Studio Vocal Master (De-Reverb + Enhance + DAW)",
-                "lyrics": "[Vokal Mix & Mastering Stüdyo Çıktısı]\n• De-Reverb: %" + str(int(req.dereverb_intensity * 100)) + "\n• Parallel Blend: %" + str(int(req.parallel_blend * 100)) + "\n• Clean Low-Cut: " + str(int(req.low_cut_hz)) + "Hz\n• Boxy Cut: " + str(int(req.boxy_mud_cut_hz)) + "Hz (" + str(req.boxy_mud_gain_db) + "dB)\n• Compressor: " + str(req.compressor_ratio) + ":1\n• Ambience: " + req.studio_ambience_type,
+                "prompt": f"{mix_mode} ({engine_lbl})",
+                "style": f"{mix_mode} • {engine_lbl}",
+                "lyrics": (
+                    f"[{mix_mode}]\n"
+                    f"• Uyum Profili: {engine_lbl}\n"
+                    f"• Akustik Yalıtım: %{int(req.dereverb_intensity * 100)}\n"
+                    f"• Vokal Gövde & Parlaklık: %{int(req.parallel_blend * 100)}\n"
+                    f"• Mekân: {req.studio_ambience_type}"
+                ),
                 "audio_url": res["audio_url"],
                 "cover_url": "",
                 "duration": res["duration"],
                 "duration_formatted": f"{int(res['duration']) // 60:02d}:{int(res['duration']) % 60:02d}",
                 "liked": False,
                 "is_instrumental": False,
-                "is_cover": False,
+                "is_cover": bool(res.get("mixed_with_backing")),
                 "is_vocal_master": True,
-                "model": "MelBand-RoFormer + Resemble-Enhance",
+                "model": f"Vokal Miks ({engine_lbl})",
                 "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
             }
             db.insert(0, song_record)
