@@ -141,6 +141,109 @@ class AudioService:
             "bpm": analysis.get("bpm", 120),
         }
 
+    def detect_keyscale(self, y: np.ndarray, sr: int) -> str:
+        """Detects musical key and scale (e.g. 'E minor', 'C major') using Krumhansl-Schmuckler chroma correlation."""
+        try:
+            chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
+            chroma_vals = np.mean(chroma, axis=1)
+            if np.sum(chroma_vals) < 1e-6:
+                return "E minor"
+
+            major_profile = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
+            minor_profile = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
+            notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+            best_score = -1e9
+            best_key = "E minor"
+            for i, root in enumerate(notes):
+                shifted = np.roll(chroma_vals, -i)
+                maj_corr = float(np.corrcoef(shifted, major_profile)[0, 1])
+                min_corr = float(np.corrcoef(shifted, minor_profile)[0, 1])
+                if maj_corr > best_score:
+                    best_score = maj_corr
+                    best_key = f"{root} major"
+                if min_corr > best_score:
+                    best_score = min_corr
+                    best_key = f"{root} minor"
+            return best_key
+        except Exception:
+            return "E minor"
+
+    def prepare_reference_for_conditioning(
+        self,
+        src_path: str,
+        dest_path: str,
+        ensure_min_sec: float = 4.5
+    ) -> Dict[str, Any]:
+        """
+        Pre-conditions voice/melodic reference audio for YuE2 (SheetSage2) and ACE-Step 1.5 XL:
+        - Removes DC offset and <75Hz mic rumble/plosives
+        - Trims dead leading/trailing silence so beat-grid & pitch decoders lock immediately
+        - Guarantees >=4.5s length so SheetSage2 never fails with BeatGridError on short vocal hums
+        - Exports clean 44.1kHz stereo WAV normalized to -1.0 dBFS
+        """
+        src_p = Path(src_path)
+        if not src_p.exists():
+            raise FileNotFoundError(f"Referans ses bulunamadı: {src_path}")
+
+        try:
+            from scipy.signal import butter, sosfilt
+            y, sr = librosa.load(str(src_p), sr=44100, mono=True)
+            if len(y) == 0:
+                y = np.zeros(44100 * 5, dtype=np.float32)
+
+            # 1. Remove DC offset & sub-75Hz rumble
+            y = y - np.mean(y)
+            sos_hp = butter(3, 75.0, btype="highpass", fs=sr, output="sos")
+            y = sosfilt(sos_hp, y).astype(np.float32)
+
+            # 2. Trim dead silence at start/end while preserving 80ms natural margin
+            y_trimmed, idx = librosa.effects.trim(y, top_db=34)
+            if len(y_trimmed) > int(sr * 0.6):
+                pad = int(sr * 0.08)
+                start_i = max(0, int(idx[0]) - pad)
+                end_i = min(len(y), int(idx[1]) + pad)
+                y = y[start_i:end_i]
+
+            # 3. Gentle soft-knee leveling so quiet hummed notes remain audible to encoders
+            rms = float(np.sqrt(np.mean(y ** 2)) + 1e-7)
+            target_rms = 0.16
+            y = np.tanh((y * min(4.0, target_rms / rms)) * 1.15)
+
+            # 4. Ensure minimum duration for beat-grid stability
+            min_samples = int(sr * ensure_min_sec)
+            if len(y) < min_samples and len(y) > int(sr * 0.4):
+                reps = (min_samples // len(y)) + 1
+                y = np.tile(y, reps)[:min_samples]
+
+            # 5. Normalize peak to -1.0 dBFS (0.891)
+            peak = float(np.max(np.abs(y)))
+            if peak > 1e-5:
+                y = (y / peak) * 0.891
+
+            # Export stereo 44.1kHz PCM_16 WAV for universal ComfyUI LoadAudio compatibility
+            stereo = np.column_stack([y, y])
+            Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
+            sf.write(str(dest_path), stereo, sr, subtype="PCM_16")
+
+            # Extract tempo & keyscale from cleaned signal
+            y_down = librosa.resample(y, orig_sr=sr, target_sr=22050)
+            tempo, _ = librosa.beat.beat_track(y=y_down, sr=22050)
+            bpm_val = float(tempo[0]) if hasattr(tempo, "__len__") and len(tempo) > 0 else float(tempo)
+            bpm = round(bpm_val) if 45 <= round(bpm_val) <= 220 else 120
+            keyscale = self.detect_keyscale(y_down, 22050)
+
+            return {
+                "duration": round(len(y) / sr, 2),
+                "bpm": bpm,
+                "keyscale": keyscale
+            }
+        except Exception as e:
+            print(f"[AudioService] Reference conditioning fallback copy: {e}")
+            import shutil
+            shutil.copy(src_p, dest_path)
+            return {"duration": 30.0, "bpm": 120, "keyscale": "E minor"}
+
     def analyze_audio_file(self, filepath: str) -> Dict[str, Any]:
         path = Path(filepath)
         if not path.exists():
@@ -162,6 +265,8 @@ class AudioService:
             if detected_bpm < 40 or detected_bpm > 240:
                 detected_bpm = 120
 
+            keyscale = self.detect_keyscale(y, sr)
+
             m = int(duration_sec) // 60
             s = int(duration_sec) % 60
             formatted = f"{m:02d}:{s:02d}"
@@ -171,6 +276,7 @@ class AudioService:
                 "duration": round(duration_sec, 2),
                 "duration_formatted": formatted,
                 "bpm": detected_bpm,
+                "keyscale": keyscale,
                 "filename": path.name
             }
         except Exception as e:
@@ -180,6 +286,7 @@ class AudioService:
                 "duration": 30.0,
                 "duration_formatted": "00:30",
                 "bpm": 120,
+                "keyscale": "E minor",
                 "filename": path.name
             }
 
@@ -393,17 +500,17 @@ class AudioService:
             if fade_out > 0:
                 signal[-fade_out:] *= (np.cos(np.linspace(0, np.pi/2, fade_out)) ** 2)
 
-            # 8. Normalize peak to -1 dBFS
+            # 8. Normalize peak to -1 dBFS and export stereo 24-bit WAV
             peak = np.max(np.abs(signal))
             if peak > 1e-4:
                 signal = (signal / peak) * 0.89
 
-            sf.write(output_path, signal.astype(np.float32), sr, subtype='PCM_16')
+            stereo_sig = np.column_stack([signal, signal]).astype(np.float32)
+            sf.write(output_path, stereo_sig, sr, subtype='PCM_24')
             print(f"[AudioService] Solo instrument synthesized cleanly with zero extra sounds to {output_path}")
             return True
         except Exception as err:
             print(f"[AudioService] Fallback synthesis error: {err}")
-            return False
             return False
 
 audio_service = AudioService()

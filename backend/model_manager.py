@@ -20,75 +20,76 @@ def format_size(size_bytes: int) -> str:
 MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
     "yue2_convrot_int8": {
         "id": "yue2_convrot_int8",
-        "name": "YuE2 3B INT8 ConvRot (Ultra Fast)",
-        "type": "Checkpoint (Full Song Synthesis)",
+        "name": "YuE2 3B INT8",
+        "type": "Hızlı Ses & Enstrüman Sentezi",
         "subfolder": "checkpoints",
         "filename": "yue2_convrot_int8.safetensors",
         "expected_size": 3960938800,
         "vram_required": "~6 GB VRAM",
-        "speed": "⚡⚡⚡ Çok Hızlı",
+        "speed": "⚡ Çok Hızlı",
         "recommended": True,
-        "description": "Optimize edilmiş INT8 kuantizasyonu ve döner konvolüsyonel dikkat mimarisi. Düşük gecikmeyle anlık taslaklar, vokal melodileri ve hızlı parça üretimi için idealdir.",
+        "description": "Düşük gecikmeli sesten enstrümana dönüşüm ve hızlı parça üretimi.",
         "urls": [
             "https://huggingface.co/m-a-p/YuE-s1-7B-anneal-int8/resolve/main/model.safetensors"
         ]
     },
     "yue_7b_full_bf16": {
         "id": "yue_7b_full_bf16",
-        "name": "YuE 7B (Full / BF16)",
-        "type": "Tam Boy Model (Üstün Vokal & Armoni)",
+        "name": "YuE2 7B BF16",
+        "type": "Üstün Armoni & Akustik Detay",
         "subfolder": "checkpoints",
         "filename": "yue2_3b_bf16.safetensors",
         "expected_size": 7799983228,
-        "vram_required": "~12-16 GB VRAM",
-        "speed": "⚡⚡ Orta (Üstün Kalite)",
-        "recommended": False,
-        "description": "Özellikle Türkçe/İngilizce vokal telaffuzlarında, şarkı trafiğinde (verse-chorus geçişleri) ve çoklu enstrüman katmanlarında 3B INT8'e göre çok daha zengin harmonik derinlik sunan tam boy BF16 modelidir.",
+        "vram_required": "~12 GB VRAM",
+        "speed": "👑 Stüdyo Kalite",
+        "recommended": True,
+        "description": "Tam boy BF16 ağırlıklar; zengin akustik enstrüman tınısı ve doğal vokal uyumu.",
         "urls": [
             "https://huggingface.co/Comfy-Org/YuE2/resolve/main/checkpoints/yue2_3b_bf16.safetensors"
         ]
     },
     "ace_step": {
         "id": "ace_step",
-        "name": "ACE-Step (Transformer & Diffusion)",
-        "type": "Hızlı Alternatif (Vokal-Beat Uyumu)",
+        "name": "ACE-Step 1.5 XL",
+        "type": "Ritim & Enstrümantal Miks Motoru",
         "subfolder": "checkpoints",
-        "filename": "ace_step_v1_3.5b.safetensors",
+        "filename": "ace_step_1.5_xl.safetensors",
         "expected_size": 7699743341,
-        "vram_required": "~8 GB VRAM",
-        "speed": "⚡⚡⚡⚡ Çok Hızlı (~12 sn)",
+        "vram_required": "~8-10 GB VRAM",
+        "speed": "🚀 Ultra Hızlı",
         "recommended": True,
-        "description": "Yerel müzik üretiminde hız ve ses netliği açısından YuE mimarisine en güçlü alternatiflerden biridir. Vokal-beat uyumu ve ses yüksekliği (loudness) dengesi oldukça iyidir.",
+        "description": "Yüksek ses netliği, sıkı BPM-melodi kilidi ve vokal miks uyumlu enstrümantal altyapı.",
         "urls": [
+            "https://huggingface.co/Comfy-Org/ace_step_1.5_ComfyUI_files/resolve/main/checkpoints/ace_step_1.5_turbo_aio.safetensors",
             "https://huggingface.co/Comfy-Org/ACE-Step/resolve/main/all_in_one/ace_step_v1_3.5b.safetensors"
         ]
     },
     "diffrhythm": {
         "id": "diffrhythm",
-        "name": "DiffRhythm (End-to-End Full Song)",
-        "type": "Difüzyon Modeli (Sıfır Artifact)",
+        "name": "DiffRhythm",
+        "type": "Temiz Difüzyon Sentezi",
         "subfolder": "checkpoints",
         "filename": "diffrhythm_1_2.pt",
         "expected_size": 2218709125,
-        "vram_required": "~6-8 GB VRAM",
-        "speed": "⚡⚡⚡⚡ Ultra Hızlı (~10 sn)",
+        "vram_required": "~6 GB VRAM",
+        "speed": "🌊 Çok Hızlı",
         "recommended": False,
-        "description": "Tam şarkı üretiminde (end-to-end) yüksek hız ve daha az dijital gürültü (artifact) sunan modern bir diğer açık kaynak modeldir.",
+        "description": "Düşük dip gürültülü uçtan uca difüzyon müzik modeli.",
         "urls": [
             "https://huggingface.co/ASLP-lab/DiffRhythm-1_2/resolve/main/cfm_model.pt"
         ]
     },
     "yue2_bf16": {
         "id": "yue2_bf16",
-        "name": "YuE2 Studio BF16 (Mastering Quality)",
-        "type": "Checkpoint (High Fidelity)",
+        "name": "YuE2 Studio BF16",
+        "type": "Mastering Kalite",
         "subfolder": "checkpoints",
         "filename": "yue2_studio_bf16.safetensors",
         "expected_size": 7921877600,
         "vram_required": "~12 GB VRAM",
-        "speed": "⚡⚡ Orta",
+        "speed": "🎛️ Dengeli",
         "recommended": False,
-        "description": "Sıkıştırmasız 16-bit Bfloat16 saf ağırlıklar ile profesyonel stüdyo miksajı kalitesinde geniş harmonik aralık, zengin enstrüman ayrışması ve kristal berraklığında vokaller.",
+        "description": "Geniş dinamik aralık ve berrak enstrüman ayrışması için BF16 stüdyo modeli.",
         "urls": [
             "https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-cot/resolve/main/model.safetensors",
             "https://huggingface.co/Truncgil/Sonicall-Models/resolve/main/yue2_studio_bf16.safetensors"
@@ -96,15 +97,15 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
     },
     "sheetsage2_bf16": {
         "id": "sheetsage2_bf16",
-        "name": "SheetSage2 BF16 (Melody & Cover Transcriber)",
-        "type": "Audio Encoder (Vocal & Melody Extraction)",
+        "name": "SheetSage2 BF16",
+        "type": "Melodi & Nota Çözümleyici",
         "subfolder": "audio_encoders",
         "filename": "sheetsage2_bf16.safetensors",
         "expected_size": 1386868122,
         "vram_required": "~3 GB VRAM",
-        "speed": "⚡⚡⚡⚡ Anlık Transkripsiyon",
+        "speed": "⚡ Anlık",
         "recommended": True,
-        "description": "Referans ses veya mikrofondan melodiyi akor ve nota yapısına çözümleyen nöral ses kodlayıcı.",
+        "description": "Referans sesten melodi, nota ve akor dizilimini çıkaran ses kodlayıcı.",
         "urls": [
             "https://huggingface.co/Truncgil/Sonicall-Models/resolve/main/sheetsage2_bf16.safetensors"
         ]
@@ -153,9 +154,11 @@ class ModelManager:
                                 found_path = f
                                 break
                         elif m_id == "ace_step":
-                            if "ace" in f_low or "step" in f_low:
+                            if ("ace" in f_low and ("1.5" in f_low or "15" in f_low or "xl" in f_low)) or "acestep" in f_low:
                                 found_path = f
                                 break
+                            elif "ace" in f_low or "step" in f_low:
+                                found_path = f
                         elif m_id == "diffrhythm":
                             if "diff" in f_low or "rhythm" in f_low:
                                 found_path = f
@@ -174,6 +177,13 @@ class ModelManager:
                                 break
                     if found_path:
                         break
+                if not found_path and m_id == "ace_step":
+                    diff_dir = self.models_dir / "diffusion_models"
+                    if diff_dir.exists():
+                        for f in diff_dir.glob("*.safetensors"):
+                            if f.stat().st_size > 1024 * 1024 and ("ace" in f.name.lower() or "step" in f.name.lower()):
+                                found_path = f
+                                break
 
             is_installed = found_path is not None
             if is_installed:

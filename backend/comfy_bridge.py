@@ -94,31 +94,58 @@ class ComfyUIBridge:
 
         client_id = f"sonicall_{uuid.uuid4().hex[:8]}"
         ws_url = f"{COMFY_WS}?clientId={client_id}"
+        start_ts = time.time()
+
+        # Connect WebSocket BEFORE posting prompt so fast executions never miss events
+        ws = None
+        try:
+            ws = websocket.WebSocket()
+            ws.connect(ws_url, timeout=180)
+        except Exception as ws_err:
+            print(f"[ComfyBridge] WebSocket pre-connect note: {ws_err}")
+            ws = None
 
         # Submit prompt to ComfyUI
         try:
             res = requests.post(f"{COMFY_HTTP}/prompt", json={"prompt": prompt_graph, "client_id": client_id}, timeout=10)
             if res.status_code != 200:
                 print(f"[ComfyBridge] Prompt error: {res.text}")
+                if ws:
+                    try:
+                        ws.close()
+                    except Exception:
+                        pass
                 return None
             res_data = res.json()
             prompt_id = res_data.get("prompt_id")
         except Exception as e:
             print(f"[ComfyBridge] Failed to post prompt: {e}")
+            if ws:
+                try:
+                    ws.close()
+                except Exception:
+                    pass
             return None
 
-        # Connect WebSocket to monitor real execution
+        # Monitor real execution over WebSocket
         loop = asyncio.get_running_loop()
         output_filename = None
+        output_subfolder = ""
+        had_error = False
+
+        def emit_stage(pct: int, msg: str):
+            if on_progress is not None:
+                try:
+                    asyncio.run_coroutine_threadsafe(on_progress(pct, msg), loop)
+                except Exception:
+                    pass
 
         def monitor_ws():
-            nonlocal output_filename
+            nonlocal output_filename, output_subfolder, ws, had_error
             try:
-                ws = websocket.WebSocket()
-                ws.connect(ws_url, timeout=120)
-
-                current_node_type = ""
-                total_steps = 24
+                if ws is None:
+                    ws = websocket.WebSocket()
+                    ws.connect(ws_url, timeout=180)
 
                 while True:
                     raw = ws.recv()
@@ -128,65 +155,55 @@ class ComfyUIBridge:
                     mtype = msg.get("type")
                     data = msg.get("data", {})
 
+                    msg_pid = data.get("prompt_id")
+                    if msg_pid and prompt_id and msg_pid != prompt_id:
+                        continue
+
                     if mtype == "executing":
                         node_id = data.get("node")
                         if node_id is None:
-                            # Finished
                             break
-                        # Find node class
                         node_info = prompt_graph.get(str(node_id), {})
                         ctype = node_info.get("class_type", "")
-                        current_node_type = ctype
 
-                        if ctype == "SheetSage2AudioToABC":
-                            asyncio.run_coroutine_threadsafe(
-                                on_progress(15, "SheetSage2: Şarkıdan vokal ve melodi konturları çıkarılıyor..."),
-                                loop
-                            )
-                        elif ctype == "YuE2GenerateABC":
-                            asyncio.run_coroutine_threadsafe(
-                                on_progress(20, "YuE2: ABC armonisi ve akor yapısı örülüyor..."),
-                                loop
-                            )
+                        if ctype in ["CheckpointLoaderSimple", "UNETLoader", "DualCLIPLoader", "VAELoader"]:
+                            emit_stage(14, "Ses yalıtımı sağlanıyor, akustik sahne hazırlanıyor...")
+                        elif ctype in ["SheetSage2AudioToABC", "LoadAudio", "VAEEncodeAudio", "ReferenceTimbreAudio"]:
+                            emit_stage(22, "Notalar sehpalara diziliyor, melodi analiz ediliyor...")
+                        elif ctype in ["YuE2GenerateABC", "TextEncodeAceStepAudio", "TextEncodeAceStepAudio1.5"]:
+                            emit_stage(30, "Müzisyenler yerleşiyor, enstrümanlar akort ediliyor...")
                         elif ctype == "YuE2GenerateMusic":
-                            asyncio.run_coroutine_threadsafe(
-                                on_progress(35, "YuE2: Vokal ve müzik tokenleri latent uzayda sentezleniyor..."),
-                                loop
-                            )
+                            emit_stage(40, "Orkestra hazır, partisyonlar düzenleniyor...")
                         elif ctype == "KSampler":
-                            asyncio.run_coroutine_threadsafe(
-                                on_progress(50, "KSampler: Difüzyon modelleme adımları işleniyor (RTX GPU)..."),
-                                loop
-                            )
+                            emit_stage(52, "Kayıt başladı, müzisyenler eserini icra ediyor...")
                         elif ctype in ["VAEDecodeAudio", "VAEDecodeAudioTiled"]:
-                            asyncio.run_coroutine_threadsafe(
-                                on_progress(88, "VAE Decode: 44.1kHz stüdyo sesine dönüştürülüyor..."),
-                                loop
-                            )
+                            emit_stage(88, "Kayıt tamamlandı, kanal dengeleri ayarlanıyor...")
                         elif ctype in ["SaveAudio", "SaveAudioAdvanced"]:
-                            asyncio.run_coroutine_threadsafe(
-                                on_progress(92, "Ses dosyası kaydediliyor..."),
-                                loop
-                            )
+                            emit_stage(93, "Miks ve mastering yapılıyor...")
 
                     elif mtype == "progress":
                         val = data.get("value", 0)
-                        mx = data.get("max", 1)
-                        pct = int(50 + (val / max(1, mx)) * 35)
-                        asyncio.run_coroutine_threadsafe(
-                            on_progress(pct, f"Difüzyon Sentezi: {val}/{mx} adım işlendi"),
-                            loop
-                        )
+                        mx = max(1, data.get("max", 1))
+                        ratio = min(1.0, max(0.0, val / mx))
+                        pct = int(52 + ratio * 34)
+                        if ratio < 0.35:
+                            stage_text = "Kayıt sürüyor, müzisyenler eserini icra ediyor..."
+                        elif ratio < 0.72:
+                            stage_text = "Melodi ve armoniler stüdyoda yükseliyor..."
+                        else:
+                            stage_text = "Son nüanslar ve enstrüman katmanları kaydediliyor..."
+                        emit_stage(pct, stage_text)
 
                     elif mtype == "executed":
-                        # Node finished, check for audio output
                         node_output = data.get("output", {})
                         if "audio" in node_output:
                             audio_list = node_output["audio"]
                             if audio_list and len(audio_list) > 0:
                                 output_filename = audio_list[0].get("filename")
+                                output_subfolder = audio_list[0].get("subfolder", "")
 
                     elif mtype == "execution_error":
+                        had_error = True
                         err = data.get("exception_message", "Unknown execution error")
                         print(f"[ComfyBridge] ComfyUI Error: {err}")
                         break
@@ -194,21 +211,50 @@ class ComfyUIBridge:
                 ws.close()
             except Exception as e:
                 print(f"[ComfyBridge] WebSocket monitoring exception: {e}")
+                if ws:
+                    try:
+                        ws.close()
+                    except Exception:
+                        pass
 
         # Run WS monitoring thread
         await loop.run_in_executor(None, monitor_ws)
 
-        # If output filename not parsed from WS, find latest file in output folder
-        if not output_filename:
-            files = list(COMFY_OUTPUT.glob("*.flac")) + list(COMFY_OUTPUT.glob("*.wav"))
-            if files:
-                files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-                output_filename = files[0].name
+        if had_error:
+            return None
+
+        # Also check ComfyUI /history/{prompt_id} if WS missed executed event
+        if not output_filename and prompt_id:
+            try:
+                hr = requests.get(f"{COMFY_HTTP}/history/{prompt_id}", timeout=3)
+                if hr.status_code == 200:
+                    hdata = hr.json().get(prompt_id, {})
+                    outputs = hdata.get("outputs", {})
+                    for _, nout in outputs.items():
+                        if "audio" in nout and nout["audio"]:
+                            output_filename = nout["audio"][0].get("filename")
+                            output_subfolder = nout["audio"][0].get("subfolder", "")
+                            break
+            except Exception:
+                pass
 
         if output_filename:
-            full_path = COMFY_OUTPUT / output_filename
-            if full_path.exists():
-                return str(full_path)
+            base_out = COMFY_DIR / "output"
+            cand1 = (base_out / output_subfolder / output_filename) if output_subfolder else (base_out / output_filename)
+            if cand1.exists():
+                return str(cand1)
+            cand2 = COMFY_OUTPUT / output_filename
+            if cand2.exists():
+                return str(cand2)
+
+        # Fallback: ONLY pick files newly written during this run
+        files = [
+            f for f in (list(COMFY_OUTPUT.glob("*.flac")) + list(COMFY_OUTPUT.glob("*.wav")))
+            if f.stat().st_mtime >= (start_ts - 1.0)
+        ]
+        if files:
+            files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+            return str(files[0])
 
         return None
 
