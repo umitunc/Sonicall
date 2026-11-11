@@ -18,8 +18,14 @@ class Song {
   final String? sheetMusicUrl;
 
   String get cleanModelName {
-    var m = model.replaceAll(RegExp(r'\s*\+\s*SheetSage2', caseSensitive: false), '').trim();
-    if (m.isEmpty) return 'YuE 3B INT8';
+    var m = model
+        .replaceAll(RegExp(r'\s*\+\s*SheetSage2', caseSensitive: false), '')
+        .replaceAll(RegExp(r'MelBand-RoFormer\s*\+\s*Resemble-Enhance', caseSensitive: false), 'Vokal Miks')
+        .trim();
+    if (m.toLowerCase().contains('ace')) return 'ACE-Step 1.5 XL';
+    if (m.toLowerCase().contains('yue') && m.contains('7')) return 'YuE2 7B';
+    if (m.toLowerCase().contains('yue') && m.contains('3')) return 'YuE2 3B';
+    if (m.isEmpty) return 'YuE2 3B';
     return m;
   }
 
@@ -187,7 +193,7 @@ class GenerationTask {
     this.isVocalMaster = false,
     this.progress = 5,
     this.status = 'processing',
-    this.message = 'Sıraya alındı...',
+    this.message = 'Stüdyo hazırlanıyor...',
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 }

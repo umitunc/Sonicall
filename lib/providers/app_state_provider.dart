@@ -111,7 +111,7 @@ class AppStateProvider extends ChangeNotifier {
   bool _isCustomInstrumentTitle = false;
   String _instrumentPrompt = '';
   String _instrumentNegativePrompt = '';
-  bool _pureSoloIsolation = true;
+  final bool _pureSoloIsolation = true;
 
   InstrumentModel get selectedInstrument => _selectedInstrument;
   String? get instrumentRefAudioPath => _instrumentRefAudioPath;
@@ -147,29 +147,37 @@ class AppStateProvider extends ChangeNotifier {
   double _vocalMasterDuration = 0.0;
   String _vocalMasterTitle = '';
 
+  // Generative Engine & Instrumental Mixdown Tuning
+  String _vocalTargetEngine = 'ace_step_15_xl'; // 'ace_step_15_xl', 'yue2', 'universal'
+  String? _vocalBackingSongId;
+  String? _vocalBackingPath;
+  String? _vocalBackingName;
+  double _vocalBackingLevel = 0.78;
+  double _vocalGainDb = 0.5;
+
   // Step 1: De-Reverb & De-Noise
   bool _vocalEnableDereverb = true;
   String _vocalDereverbModel = 'anvuew/dereverb_mel_band_roformer';
-  double _vocalDereverbIntensity = 0.85; // 0.0 - 1.0
+  double _vocalDereverbIntensity = 0.82; // 0.0 - 1.0
   double _vocalDenoiseThresholdDb = -38.0; // dB
 
   // Step 2: Vocal Enhancement
   bool _vocalEnableEnhancement = true;
   String _vocalEnhancerModel = 'ResembleAI/resemble-enhance';
-  double _vocalParallelBlend = 0.45; // 45% (Golden ratio: 40-50%)
-  double _vocalAirBoost = 0.60;
-  double _vocalBodyWarmth = 0.50;
+  double _vocalParallelBlend = 0.45; // 45%
+  double _vocalAirBoost = 0.58;
+  double _vocalBodyWarmth = 0.48;
   bool _vocalDeEsserEnabled = true;
 
   // Step 3: DAW Studio Master
   bool _vocalEnableDawMaster = true;
   double _vocalLowCutHz = 85.0; // 80 - 100 Hz
-  double _vocalBoxyMudCutHz = 380.0; // 300 - 500 Hz
+  double _vocalBoxyMudCutHz = 365.0; // 300 - 500 Hz
   double _vocalBoxyMudGainDb = -3.5; // -3 to -5 dB
   double _vocalCompressorRatio = 4.0; // 4:1
-  double _vocalCompressorMakeupDb = 3.5;
+  double _vocalCompressorMakeupDb = 3.2;
   String _vocalStudioAmbienceType = 'Plate Reverb';
-  double _vocalAmbienceWetMix = 0.14; // 14%
+  double _vocalAmbienceWetMix = 0.12; // 12%
 
   // Vocal Master Process State
   bool _isVocalMasterProcessing = false;
@@ -182,7 +190,17 @@ class AppStateProvider extends ChangeNotifier {
   String? get vocalMasterRefPath => _vocalMasterRefPath;
   String? get vocalMasterRefName => _vocalMasterRefName;
   double get vocalMasterDuration => _vocalMasterDuration;
-  String get vocalMasterTitle => _vocalMasterTitle.isNotEmpty ? _vocalMasterTitle : (_vocalMasterRefName != null ? '${_vocalMasterRefName!.split('.').first} (Studio Master)' : 'Studio Vocal Master');
+  String get vocalMasterTitle => _vocalMasterTitle.isNotEmpty
+      ? _vocalMasterTitle
+      : (_vocalMasterRefName != null
+          ? '${_vocalMasterRefName!.split('.').first} (Stüdyo Miks)'
+          : 'Stüdyo Vokal Miks');
+  String get vocalTargetEngine => _vocalTargetEngine;
+  String? get vocalBackingSongId => _vocalBackingSongId;
+  String? get vocalBackingPath => _vocalBackingPath;
+  String? get vocalBackingName => _vocalBackingName;
+  double get vocalBackingLevel => _vocalBackingLevel;
+  double get vocalGainDb => _vocalGainDb;
   bool get vocalEnableDereverb => _vocalEnableDereverb;
   String get vocalDereverbModel => _vocalDereverbModel;
   double get vocalDereverbIntensity => _vocalDereverbIntensity;
@@ -322,6 +340,9 @@ class AppStateProvider extends ChangeNotifier {
   final Set<String> _extractingStems = {};
   final Set<String> _generatingSheets = {};
 
+  List<Song> get allSongs => List.unmodifiable(_songs);
+  List<Song> get instrumentalSongs =>
+      _songs.where((s) => s.isInstrumental || s.stems?.containsKey('instrumental') == true).toList();
   List<Song> get songs => _filteredSongs();
   LibraryFilter get libraryFilter => _libraryFilter;
   String get searchQuery => _searchQuery;
@@ -810,7 +831,7 @@ class AppStateProvider extends ChangeNotifier {
       isInstrumental: true,
       progress: 5,
       status: 'processing',
-      message: '$instTurkishName tek enstrüman solo izolasyonu işleniyor...',
+      message: 'Stüdyo hazırlanıyor, müzisyen sahneye yerleşiyor...',
     );
     _activeTasks.insert(0, task);
     notifyListeners();
@@ -853,6 +874,78 @@ class AppStateProvider extends ChangeNotifier {
   // ==========================================
   void setVocalMasterTitle(String title) {
     _vocalMasterTitle = title;
+    notifyListeners();
+  }
+
+  void setVocalTargetEngine(String engine) {
+    _vocalTargetEngine = engine;
+    if (engine == 'ace_step_15_xl') {
+      _vocalBoxyMudCutHz = 355.0;
+      _vocalAirBoost = 0.56;
+      _vocalBodyWarmth = 0.50;
+      _vocalDeEsserEnabled = true;
+    } else if (engine == 'yue2') {
+      _vocalBoxyMudCutHz = 315.0;
+      _vocalAirBoost = 0.66;
+      _vocalBodyWarmth = 0.45;
+      _vocalDeEsserEnabled = true;
+    } else {
+      _vocalBoxyMudCutHz = 365.0;
+      _vocalAirBoost = 0.58;
+      _vocalBodyWarmth = 0.48;
+    }
+    notifyListeners();
+  }
+
+  void setVocalBackingFromSong(Song? song) {
+    if (song == null) {
+      _vocalBackingSongId = null;
+      _vocalBackingPath = null;
+      _vocalBackingName = null;
+    } else {
+      _vocalBackingSongId = song.id;
+      _vocalBackingPath = song.stems?['instrumental'] ?? song.audioUrl;
+      _vocalBackingName = song.title;
+      if (song.model.toLowerCase().contains('ace')) {
+        _vocalTargetEngine = 'ace_step_15_xl';
+      } else if (song.model.toLowerCase().contains('yue')) {
+        _vocalTargetEngine = 'yue2';
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<void> pickVocalBackingFile() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['mp3', 'wav', 'ogg', 'm4a', 'flac'],
+    );
+    if (result.isNotEmpty && result.first.path != null) {
+      final file = File(result.first.path!);
+      final uploadRes = await api.uploadAudio(file);
+      if (uploadRes != null && uploadRes['success'] == true) {
+        _vocalBackingSongId = null;
+        _vocalBackingPath = uploadRes['saved_path'];
+        _vocalBackingName = result.first.name;
+        notifyListeners();
+      }
+    }
+  }
+
+  void clearVocalBacking() {
+    _vocalBackingSongId = null;
+    _vocalBackingPath = null;
+    _vocalBackingName = null;
+    notifyListeners();
+  }
+
+  void setVocalBackingLevel(double val) {
+    _vocalBackingLevel = val;
+    notifyListeners();
+  }
+
+  void setVocalGainDb(double val) {
+    _vocalGainDb = val;
     notifyListeners();
   }
 
@@ -970,7 +1063,7 @@ class AppStateProvider extends ChangeNotifier {
         _vocalMasterDuration = (uploadRes['duration'] is num)
             ? (uploadRes['duration'] as num).toDouble()
             : 30.0;
-        _vocalMasterTitle = '${result.first.name.split('.').first} (Studio Master)';
+        _vocalMasterTitle = '${result.first.name.split('.').first} (Stüdyo Miks)';
         _lastVocalMasterResult = null;
         _vocalMasterResultAudioUrl = null;
         notifyListeners();
@@ -979,10 +1072,16 @@ class AppStateProvider extends ChangeNotifier {
   }
 
   void setVocalMasterFromSong(Song song) {
+    if (song.isInstrumental) {
+      setVocalBackingFromSong(song);
+      _activeTab = 'vocal_master';
+      notifyListeners();
+      return;
+    }
     _vocalMasterRefPath = song.audioUrl;
     _vocalMasterRefName = '${song.title}.wav';
     _vocalMasterDuration = song.durationSeconds.toDouble();
-    _vocalMasterTitle = '${song.title} (Studio Master)';
+    _vocalMasterTitle = '${song.title} (Stüdyo Miks)';
     _lastVocalMasterResult = null;
     _vocalMasterResultAudioUrl = null;
     _activeTab = 'vocal_master';
@@ -993,24 +1092,30 @@ class AppStateProvider extends ChangeNotifier {
     if (_vocalMasterRefPath == null || _isVocalMasterProcessing) return;
 
     _isVocalMasterProcessing = true;
-    _vocalMasterProgress = 0.15;
-    _vocalMasterMessage = 'Adım 1: Mel-Band RoFormer ile oda yankısı ve dip gürültüsü siliniyor...';
+    _vocalMasterProgress = 0.18;
+    _vocalMasterMessage = 'Ses yalıtımı sağlanıyor, oda yankısı temizleniyor...';
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 400));
-    _vocalMasterProgress = 0.45;
-    _vocalMasterMessage = 'Adım 2: Resemble-Enhance ile gövde ve Air frekansları sentezleniyor (Paralel %${(_vocalParallelBlend * 100).toInt()})...';
+    await Future.delayed(const Duration(milliseconds: 300));
+    _vocalMasterProgress = 0.50;
+    _vocalMasterMessage = 'Mikrofon dengesi ve vokal gövdesi ayarlanıyor...';
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 400));
-    _vocalMasterProgress = 0.75;
-    _vocalMasterMessage = 'Adım 3: Temizlik EQ (${_vocalLowCutHz.toInt()}Hz Low-cut & ${_vocalBoxyMudCutHz.toInt()}Hz Boxy Dip) + 4:1 VCA Kompresör + $_vocalStudioAmbienceType uygulanıyor...';
+    await Future.delayed(const Duration(milliseconds: 300));
+    _vocalMasterProgress = 0.78;
+    _vocalMasterMessage = _vocalBackingPath != null
+        ? 'Vokal ve enstrümantal altyapı miksleniyor...'
+        : 'Miks ve mastering yapılıyor...';
     notifyListeners();
 
     final payload = {
       'file_path': _vocalMasterRefPath,
       'title': vocalMasterTitle,
       'save_to_library': true,
+      'target_engine': _vocalTargetEngine,
+      'backing_audio_path': _vocalBackingPath,
+      'backing_mix_level': _vocalBackingLevel,
+      'vocal_gain_db': _vocalGainDb,
       'enable_dereverb': _vocalEnableDereverb,
       'dereverb_intensity': _vocalDereverbIntensity,
       'denoise_threshold_db': _vocalDenoiseThresholdDb,
@@ -1036,15 +1141,14 @@ class AppStateProvider extends ChangeNotifier {
 
     if (res != null && res['success'] == true) {
       _vocalMasterProgress = 1.0;
-      _vocalMasterMessage = 'Vokal stüdyo mastering tamamlandı! (${res['processing_time_sec']}s)';
+      _vocalMasterMessage = 'Kayıt hazır, iyi dinlemeler!';
       _lastVocalMasterResult = res;
       _vocalMasterResultAudioUrl = res['audio_url'];
-      // Refresh song list so it appears in library
       await refreshSongs();
       notifyListeners();
     } else {
       _vocalMasterProgress = 0.0;
-      _vocalMasterMessage = 'Hata: Vokal mastering gerçekleştirilemedi.';
+      _vocalMasterMessage = 'Miks işlemi tamamlanamadı.';
       notifyListeners();
     }
   }
@@ -1180,7 +1284,7 @@ class AppStateProvider extends ChangeNotifier {
       isInstrumental: _isInstrumental,
       progress: 5,
       status: 'processing',
-      message: 'Parametreler YuE2 motoruna iletiliyor...',
+      message: 'Stüdyo hazırlanıyor, ses yalıtımı sağlanıyor...',
     );
     _activeTasks.insert(0, task);
     notifyListeners();
