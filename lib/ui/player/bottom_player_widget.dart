@@ -65,7 +65,7 @@ class BottomPlayerWidget extends StatelessWidget {
             border: Border(top: BorderSide(color: borderColor, width: 1)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15),
+                color: Colors.black.withValues(alpha: 0.15),
                 blurRadius: 10,
                 offset: const Offset(0, -2),
               ),
@@ -76,104 +76,102 @@ class BottomPlayerWidget extends StatelessWidget {
               ? Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.music_note_rounded, size: 20, color: Colors.grey.withOpacity(0.5)),
+                    Icon(Icons.music_note_rounded, size: 20, color: Colors.grey.withValues(alpha: 0.5)),
                     const SizedBox(width: 8),
-                    Text(
-                      'Çalmak için kütüphaneden bir şarkıya tıklayın',
-                      style: TextStyle(fontSize: 13, color: Colors.grey.withOpacity(0.7)),
+                    Flexible(
+                      child: Text(
+                        'Dinlemek için kütüphaneden bir kayıt seçin',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12.5, color: Colors.grey.withValues(alpha: 0.7)),
+                      ),
                     ),
                   ],
                 )
               : Row(
                   children: [
                     // Left Track Info
-                    SizedBox(
-                      width: 260,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              gradient: LinearGradient(
-                                colors: _getThumbnailGradient(
-                                  isVocalMaster: song.isVocalMaster,
-                                  isInstrumental: song.isInstrumental,
-                                  isCover: song.isCover,
-                                ),
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _getThumbnailGradient(
+                    Flexible(
+                      flex: 3,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 250),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 46,
+                              height: 46,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                gradient: LinearGradient(
+                                  colors: _getThumbnailGradient(
                                     isVocalMaster: song.isVocalMaster,
                                     isInstrumental: song.isInstrumental,
                                     isCover: song.isCover,
-                                  )[0].withValues(alpha: 0.35),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
+                                  ),
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
-                              ],
-                            ),
-                            child: Center(
-                              child: Icon(
-                                _getThumbnailIcon(
-                                  isVocalMaster: song.isVocalMaster,
-                                  isInstrumental: song.isInstrumental,
-                                  isCover: song.isCover,
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  _getThumbnailIcon(
+                                    isVocalMaster: song.isVocalMaster,
+                                    isInstrumental: song.isInstrumental,
+                                    isCover: song.isCover,
+                                  ),
+                                  color: Colors.white,
+                                  size: 22,
                                 ),
-                                color: Colors.white,
-                                size: 24,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  song.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    song.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  song.style,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    song.cleanModelName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              song.liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                              color: song.liked ? const Color(0xFFEF4444) : Colors.grey,
-                              size: 18,
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              icon: Icon(
+                                song.liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                color: song.liked ? const Color(0xFFEF4444) : Colors.grey,
+                                size: 18,
+                              ),
+                              onPressed: () => state.toggleSongLike(song),
                             ),
-                            onPressed: () => state.toggleSongLike(song),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
 
-                    const SizedBox(width: 24),
+                    const SizedBox(width: 16),
 
                     // Center Controls & Timeline
                     Expanded(
+                      flex: 5,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -239,7 +237,7 @@ class BottomPlayerWidget extends StatelessWidget {
                                       thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                                       overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
                                       activeTrackColor: AppColors.primary,
-                                      inactiveTrackColor: Colors.grey.withOpacity(0.25),
+                                      inactiveTrackColor: Colors.grey.withValues(alpha: 0.25),
                                       thumbColor: AppColors.primary,
                                     ),
                                     child: Slider(
@@ -270,64 +268,62 @@ class BottomPlayerWidget extends StatelessWidget {
                       ),
                     ),
 
-                    const SizedBox(width: 24),
+                    const SizedBox(width: 16),
 
                     // Right Options: Volume, Loop, Lyrics
-                    SizedBox(
-                      width: 230,
-                      child: Row(
-                        children: [
-                          // Loop Toggle
-                          IconButton(
-                            icon: Icon(
-                              Icons.repeat_rounded,
-                              size: 20,
-                              color: audio.isLooping ? AppColors.primary : Colors.grey,
-                            ),
-                            tooltip: audio.isLooping ? 'Döngü Açık' : 'Döngü Kapalı',
-                            onPressed: () => audio.toggleLoop(),
-                          ),
-
-                          // Lyrics Modal Button
-                          IconButton(
-                            icon: const Icon(Icons.lyrics_rounded, size: 20, color: Colors.grey),
-                            tooltip: 'Şarkı Sözleri',
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (_) => LyricsModal(song: song),
-                              );
-                            },
-                          ),
-
-                          const SizedBox(width: 6),
-
-                          // Volume Icon & Slider
-                          Icon(
-                            audio.volume == 0
-                                ? Icons.volume_off_rounded
-                                : (audio.volume < 0.5 ? Icons.volume_down_rounded : Icons.volume_up_rounded),
-                            size: 19,
-                            color: Colors.grey,
-                          ),
-                          Expanded(
-                            child: SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                trackHeight: 3.5,
-                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-                                activeTrackColor: AppColors.primary,
-                                inactiveTrackColor: Colors.grey.withOpacity(0.25),
-                                thumbColor: AppColors.primary,
+                    Flexible(
+                      flex: 3,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 210),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              icon: Icon(
+                                Icons.repeat_rounded,
+                                size: 19,
+                                color: audio.isLooping ? AppColors.primary : Colors.grey,
                               ),
-                              child: Slider(
-                                value: audio.volume,
-                                min: 0.0,
-                                max: 1.0,
-                                onChanged: (val) => audio.setVolume(val),
+                              tooltip: audio.isLooping ? 'Döngü Açık' : 'Döngü Kapalı',
+                              onPressed: () => audio.toggleLoop(),
+                            ),
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              icon: const Icon(Icons.lyrics_rounded, size: 19, color: Colors.grey),
+                              tooltip: 'Sözler',
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => LyricsModal(song: song),
+                                );
+                              },
+                            ),
+                            Icon(
+                              audio.volume == 0
+                                  ? Icons.volume_off_rounded
+                                  : (audio.volume < 0.5 ? Icons.volume_down_rounded : Icons.volume_up_rounded),
+                              size: 18,
+                              color: Colors.grey,
+                            ),
+                            Expanded(
+                              child: SliderTheme(
+                                data: SliderTheme.of(context).copyWith(
+                                  trackHeight: 3.5,
+                                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+                                  activeTrackColor: AppColors.primary,
+                                  inactiveTrackColor: Colors.grey.withValues(alpha: 0.25),
+                                  thumbColor: AppColors.primary,
+                                ),
+                                child: Slider(
+                                  value: audio.volume,
+                                  min: 0.0,
+                                  max: 1.0,
+                                  onChanged: (val) => audio.setVolume(val),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ],

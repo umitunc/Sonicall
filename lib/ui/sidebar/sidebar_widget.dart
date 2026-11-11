@@ -17,167 +17,126 @@ class SidebarWidget extends StatelessWidget {
     final sidebarBg = isDark ? AppColors.darkSidebar : AppColors.lightSidebar;
     final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
+    final isCreateSelected = state.activeTab != 'instrument' &&
+        state.activeTab != 'vocal_master' &&
+        state.activeTab != 'library';
+
     return Container(
-      width: 220,
+      width: 104,
       decoration: BoxDecoration(
         color: sidebarBg,
         border: Border(right: BorderSide(color: borderColor, width: 1)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Logo & Brand Header (Draggable Window Area)
+          // Compact Brand Header (Draggable Window Area)
           DragToMoveArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Row(
+              padding: const EdgeInsets.only(top: 18, bottom: 14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SonicallLogo(size: 36),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'SONICALL',
-                        style: TextStyle(
-                          fontFamily: 'Segoe UI',
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.5,
-                          color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                        ),
-                      ),
-                      Text(
-                        'AI MUSIC STUDIO',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
+                  const SonicallLogo(size: 34),
+                  const SizedBox(height: 6),
+                  Text(
+                    'SONICALL',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'Segoe UI',
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.2,
+                      color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
 
-          // Main Navigation Items
-          _buildNavItem(
-            context,
-            icon: Icons.home_rounded,
-            label: 'Ana Sayfa',
-            id: 'home',
-            isSelected: state.activeTab == 'home',
-            onTap: () => state.setActiveTab('home'),
-          ),
-          _buildNavItem(
-            context,
-            icon: Icons.explore_rounded,
-            label: 'Keşfet',
-            id: 'explore',
-            isSelected: state.activeTab == 'explore',
-            onTap: () => state.setActiveTab('explore'),
-          ),
-          _buildNavItem(
-            context,
-            icon: Icons.add_circle_rounded,
-            label: 'Üret (Create)',
-            id: 'create',
-            isSelected: state.activeTab == 'create',
-            highlight: true,
-            onTap: () => state.setActiveTab('create'),
-          ),
-          _buildNavItem(
-            context,
-            icon: Icons.tune_rounded,
-            label: 'Stüdyo & Cover',
-            id: 'studio',
-            isSelected: state.activeTab == 'studio',
-            onTap: () => state.setActiveTab('studio'),
-          ),
-          _buildNavItem(
-            context,
-            icon: Icons.piano_rounded,
-            label: 'Enstrümana Dönüştür',
-            id: 'instrument',
-            isSelected: state.activeTab == 'instrument',
-            onTap: () => state.setActiveTab('instrument'),
-          ),
-          _buildNavItem(
-            context,
-            icon: Icons.graphic_eq_rounded,
-            label: 'Vokal Mix & Master',
-            id: 'vocal_master',
-            isSelected: state.activeTab == 'vocal_master',
-            onTap: () => state.setActiveTab('vocal_master'),
-          ),
-          _buildNavItem(
-            context,
-            icon: Icons.library_music_rounded,
-            label: 'Kütüphanem',
-            id: 'library',
-            isSelected: state.activeTab == 'library',
-            onTap: () => state.setActiveTab('library'),
-          ),
-
-          const Spacer(),
-
-          // GPU & Engine Status Badge
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurface : const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: state.isBackendOnline
-                    ? const Color(0xFF10B981).withOpacity(0.3)
-                    : Colors.red.withOpacity(0.3),
+          // Main Navigation (Icon + Short Label underneath — zero overflow)
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                children: [
+                  _buildRailItem(
+                    context,
+                    icon: Icons.music_note_rounded,
+                    label: 'Stüdyo',
+                    isSelected: isCreateSelected,
+                    onTap: () => state.setActiveTab('create'),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildRailItem(
+                    context,
+                    icon: Icons.piano_rounded,
+                    label: 'Enstrüman',
+                    isSelected: state.activeTab == 'instrument',
+                    onTap: () => state.setActiveTab('instrument'),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildRailItem(
+                    context,
+                    icon: Icons.graphic_eq_rounded,
+                    label: 'Vokal Miks',
+                    isSelected: state.activeTab == 'vocal_master',
+                    onTap: () => state.setActiveTab('vocal_master'),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildRailItem(
+                    context,
+                    icon: Icons.library_music_rounded,
+                    label: 'Kütüphane',
+                    isSelected: state.activeTab == 'library',
+                    onTap: () {
+                      state.setLibraryFilter(LibraryFilter.all);
+                      state.setActiveTab('library');
+                    },
+                  ),
+                ],
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+
+          // Concise Studio Status Pill
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: state.isBackendOnline
+                    ? const Color(0xFF10B981).withValues(alpha: 0.35)
+                    : Colors.red.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: state.isBackendOnline ? const Color(0xFF10B981) : Colors.red,
-                        boxShadow: [
-                          if (state.isBackendOnline)
-                            BoxShadow(
-                              color: const Color(0xFF10B981).withOpacity(0.6),
-                              blurRadius: 6,
-                            )
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      state.isBackendOnline ? 'Motor Hazır' : 'Motor Çevrimdışı',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: state.isBackendOnline ? const Color(0xFF10B981) : Colors.red,
-                      ),
-                    ),
-                  ],
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: state.isBackendOnline ? const Color(0xFF10B981) : Colors.red,
+                  ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  state.gpuName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    state.isBackendOnline ? 'Hazır' : 'Kapalı',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: state.isBackendOnline ? const Color(0xFF10B981) : Colors.red,
+                    ),
                   ),
                 ),
               ],
@@ -186,115 +145,107 @@ class SidebarWidget extends StatelessWidget {
 
           const Divider(height: 1),
 
-          // Bottom Action Buttons
+          // Bottom Compact Actions (Icon + Short Label)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
             child: Column(
               children: [
-                _buildSmallAction(
+                _buildBottomAction(
                   context,
                   icon: Icons.hub_rounded,
-                  label: 'Model Hub',
+                  label: 'Modeller',
                   onTap: () => showDialog(
                     context: context,
                     builder: (_) => const ModelHubDialog(),
                   ),
                 ),
-                _buildSmallAction(
-                  context,
-                  icon: Icons.settings_rounded,
-                  label: 'Ayarlar',
-                  onTap: () => showDialog(
-                    context: context,
-                    builder: (_) => const SettingsDialog(),
-                  ),
-                ),
-                _buildSmallAction(
-                  context,
-                  icon: isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                  label: isDark ? 'Aydınlık Mod' : 'Karanlık Mod',
-                  onTap: () => state.toggleTheme(),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildMiniIconAction(
+                      context,
+                      icon: Icons.settings_rounded,
+                      tooltip: 'Ayarlar',
+                      onTap: () => showDialog(
+                        context: context,
+                        builder: (_) => const SettingsDialog(),
+                      ),
+                    ),
+                    _buildMiniIconAction(
+                      context,
+                      icon: isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                      tooltip: isDark ? 'Aydınlık Tema' : 'Karanlık Tema',
+                      onTap: () => state.toggleTheme(),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(
+  Widget _buildRailItem(
     BuildContext context, {
     required IconData icon,
     required String label,
-    required String id,
     required bool isSelected,
     required VoidCallback onTap,
-    bool highlight = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isSelected
+        ? (isDark ? AppColors.primary.withValues(alpha: 0.16) : AppColors.primary.withValues(alpha: 0.12))
+        : Colors.transparent;
+    final iconColor = isSelected
+        ? AppColors.primary
+        : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary);
+    final textColor = isSelected
+        ? (isDark ? Colors.white : AppColors.primary)
+        : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary);
 
-    Color bg = Colors.transparent;
-    Color iconColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-    Color textColor = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-
-    if (isSelected) {
-      bg = isDark ? const Color(0xFF23232A) : const Color(0xFFEDEFF2);
-      iconColor = AppColors.primary;
-      textColor = AppColors.primary;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-      child: Material(
-        color: bg,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          hoverColor: AppColors.primary.withOpacity(0.08),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(
-              children: [
-                Icon(icon, size: 20, color: iconColor),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: textColor,
-                    ),
-                  ),
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        hoverColor: AppColors.primary.withValues(alpha: 0.08),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: isSelected
+                ? Border.all(color: AppColors.primary.withValues(alpha: 0.45), width: 1)
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 22, color: iconColor),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                  color: textColor,
                 ),
-                if (highlight)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'AI',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSmallAction(
+  Widget _buildBottomAction(
     BuildContext context, {
     required IconData icon,
     required String label,
@@ -302,22 +253,50 @@ class SidebarWidget extends StatelessWidget {
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
-            const SizedBox(width: 10),
+            Icon(icon, size: 18, color: AppColors.primary),
+            const SizedBox(height: 3),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
                 color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniIconAction(
+    BuildContext context, {
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(
+            icon,
+            size: 18,
+            color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+          ),
         ),
       ),
     );

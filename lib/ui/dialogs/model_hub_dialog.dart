@@ -34,23 +34,28 @@ class ModelHubDialog extends StatelessWidget {
                   child: const Icon(Icons.hub_rounded, color: AppColors.primary, size: 22),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Model Yöneticisi (Model Hub)',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'BYOM (Bring Your Own Models) & ComfyUI Yerel Model Entegrasyonu',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Stüdyo Modelleri',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                       ),
-                    ),
-                  ],
+                      Text(
+                        'Müzik ve melodi motorları',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.refresh_rounded, size: 20),
                   tooltip: 'Yeniden Tara',
@@ -185,9 +190,13 @@ class ModelHubDialog extends StatelessWidget {
                                       children: [
                                         Row(
                                           children: [
-                                            Text(
-                                              m.name,
-                                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold),
+                                            Flexible(
+                                              child: Text(
+                                                m.name,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold),
+                                              ),
                                             ),
                                             if (m.recommended) ...[
                                               const SizedBox(width: 6),
