@@ -23,6 +23,7 @@ from config import (
     load_settings, save_settings
 )
 from model_manager import model_manager
+from diagnostic_service import model_diagnostic_service
 from yue2_adapter import engine_adapter, get_db, save_db
 from comfy_bridge import comfy_bridge
 from audio_stems import extract_stems_for_song
@@ -142,6 +143,14 @@ def get_system_status():
 @app.get("/api/models")
 def get_models():
     return model_manager.scan_models()
+
+@app.get("/api/diagnostic")
+def get_diagnostics():
+    return model_diagnostic_service.get_latest_report()
+
+@app.post("/api/diagnostic/run")
+def run_diagnostics():
+    return model_diagnostic_service.run_full_diagnostics()
 
 @app.post("/api/models/path")
 def set_models_path(req: SetModelDirRequest):

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/app_state_provider.dart';
+import 'diagnostic_dialog.dart';
 
 class ModelHubDialog extends StatelessWidget {
   const ModelHubDialog({super.key});
@@ -54,6 +55,14 @@ class ModelHubDialog extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.healing_rounded, size: 20),
+                  tooltip: 'Model & Sentez Diagnostik Kayıtları',
+                  onPressed: () => showDialog(
+                    context: context,
+                    builder: (_) => const DiagnosticDialog(),
                   ),
                 ),
                 IconButton(

@@ -306,12 +306,16 @@ class YuE2EngineAdapter:
                 if header_size <= 0 or header_size > 64 * 1024 * 1024:
                     return "unknown"
                 raw_json = f.read(header_size).decode("utf-8", errors="ignore")
-            if "lyric_encoder." in raw_json or "refer_audio" in raw_json or "qwen" in raw_json.lower():
-                return "ace15"
-            if "genre_embedder." in raw_json or "speaker_embedder." in raw_json:
+            # Safetensors inspection for ACE architectures
+            if "umt5" in raw_json or "genre_embedder." in raw_json or "speaker_embedder." in raw_json:
                 return "ace10"
+            if "qwen" in raw_json.lower() or "refer_audio" in raw_json or "ace15" in raw_json.lower():
+                return "ace15"
             if "yue" in raw_json.lower() or "codec_model" in raw_json:
                 return "yue2"
+            if "lyric_encoder." in raw_json:
+                # ACE-Step 1.0 checkpoint has lyric_encoder + umt5base. Only treat as ace15 if qwen is present.
+                return "ace15" if "qwen" in raw_json.lower() else "ace10"
         except Exception:
             pass
         name_low = filepath.name.lower()
@@ -473,11 +477,10 @@ class YuE2EngineAdapter:
                 }
             },
             "7": {
-                "class_type": "SaveAudioAdvanced",
+                "class_type": "SaveAudio",
                 "inputs": {
                     "audio": ["6", 0],
-                    "filename_prefix": f"audio/Sonicall_{safe_prefix}_{seed}",
-                    "format": {"format": "flac"}
+                    "filename_prefix": f"audio/Sonicall_{safe_prefix}_{seed}"
                 }
             }
         }
@@ -602,11 +605,10 @@ class YuE2EngineAdapter:
                 }
             },
             "7": {
-                "class_type": "SaveAudioAdvanced",
+                "class_type": "SaveAudio",
                 "inputs": {
                     "audio": ["6", 0],
-                    "filename_prefix": f"audio/Sonicall_Cover_{seed}",
-                    "format": {"format": "flac"}
+                    "filename_prefix": f"audio/Sonicall_Cover_{seed}"
                 }
             }
         }
@@ -795,11 +797,10 @@ class YuE2EngineAdapter:
 
         safe_prefix = "".join(c if c.isalnum() else "_" for c in title[:14]) or "ACEStep"
         graph["7"] = {
-            "class_type": "SaveAudioAdvanced",
+            "class_type": "SaveAudio",
             "inputs": {
                 "audio": ["6", 0],
-                "filename_prefix": f"audio/Sonicall_ACE15_{safe_prefix}_{seed}",
-                "format": {"format": "flac"}
+                "filename_prefix": f"audio/Sonicall_ACE15_{safe_prefix}_{seed}"
             }
         }
         return graph
@@ -922,11 +923,10 @@ class YuE2EngineAdapter:
 
         safe_prefix = "".join(c if c.isalnum() else "_" for c in title[:14]) or "ACEStep"
         graph["7"] = {
-            "class_type": "SaveAudioAdvanced",
+            "class_type": "SaveAudio",
             "inputs": {
                 "audio": ["6", 0],
-                "filename_prefix": f"audio/Sonicall_ACE_{safe_prefix}_{seed}",
-                "format": {"format": "flac"}
+                "filename_prefix": f"audio/Sonicall_ACE_{safe_prefix}_{seed}"
             }
         }
         return graph

@@ -81,6 +81,29 @@ class ApiService {
     return null;
   }
 
+  Future<Map<String, dynamic>> fetchDiagnostics() async {
+    try {
+      final res = await http.get(Uri.parse('$baseUrl/api/diagnostic')).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        return jsonDecode(utf8.decode(res.bodyBytes));
+      }
+    } catch (_) {}
+    return {};
+  }
+
+  Future<Map<String, dynamic>> runDiagnostics() async {
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/api/diagnostic/run'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 30));
+      if (res.statusCode == 200) {
+        return jsonDecode(utf8.decode(res.bodyBytes));
+      }
+    } catch (_) {}
+    return {};
+  }
+
   Future<Map<String, dynamic>> fetchModels() async {
     try {
       final res = await http.get(Uri.parse('$baseUrl/api/models'));

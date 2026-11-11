@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/app_state_provider.dart';
 import '../dialogs/model_hub_dialog.dart';
 import '../dialogs/settings_dialog.dart';
+import '../dialogs/diagnostic_dialog.dart';
 import '../widgets/sonicall_logo.dart';
 
 class SidebarWidget extends StatelessWidget {
@@ -103,43 +104,50 @@ class SidebarWidget extends StatelessWidget {
           ),
 
           // Concise Studio Status Pill
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurface : const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: state.isBackendOnline
-                    ? const Color(0xFF10B981).withValues(alpha: 0.35)
-                    : Colors.red.withValues(alpha: 0.35),
-              ),
+          InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => showDialog(
+              context: context,
+              builder: (_) => const DiagnosticDialog(),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: state.isBackendOnline ? const Color(0xFF10B981) : Colors.red,
-                  ),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: state.isBackendOnline
+                      ? const Color(0xFF10B981).withValues(alpha: 0.35)
+                      : Colors.red.withValues(alpha: 0.35),
                 ),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: Text(
-                    state.isBackendOnline ? 'Hazır' : 'Kapalı',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
                       color: state.isBackendOnline ? const Color(0xFF10B981) : Colors.red,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      state.isBackendOnline ? 'Hazır' : 'Kapalı',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: state.isBackendOnline ? const Color(0xFF10B981) : Colors.red,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 

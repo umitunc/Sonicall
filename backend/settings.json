@@ -1,0 +1,7 @@
+{
+  "models_dir": "D:\\Works\\2026\\ComfyUI\\ComfyUI\\models",
+  "selected_model": "yue2_convrot_int8",
+  "output_format": "wav",
+  "theme": "dark",
+  "auto_play": true
+}

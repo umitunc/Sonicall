@@ -43,6 +43,33 @@ class AppStateProvider extends ChangeNotifier {
   List<ModelInfo> get models => _models;
   Map<String, dynamic> get downloads => _downloads;
 
+  // Diagnostics
+  Map<String, dynamic> _diagnosticReport = {};
+  bool _isRunningDiagnostics = false;
+  Map<String, dynamic> get diagnosticReport => _diagnosticReport;
+  bool get isRunningDiagnostics => _isRunningDiagnostics;
+
+  Future<void> fetchDiagnostics() async {
+    final rep = await api.fetchDiagnostics();
+    if (rep.isNotEmpty) {
+      _diagnosticReport = rep;
+      notifyListeners();
+    }
+  }
+
+  Future<void> runDiagnostics() async {
+    _isRunningDiagnostics = true;
+    notifyListeners();
+    try {
+      final rep = await api.runDiagnostics();
+      if (rep.isNotEmpty) {
+        _diagnosticReport = rep;
+      }
+    } catch (_) {}
+    _isRunningDiagnostics = false;
+    notifyListeners();
+  }
+
   // Studio Form State
   StudioCategory _category = StudioCategory.songs;
   StudioMode _mode = StudioMode.simple;
@@ -359,6 +386,7 @@ class AppStateProvider extends ChangeNotifier {
     await _loadPreferences();
     await checkBackendStatus();
     await refreshModels();
+    await fetchDiagnostics();
     await refreshSongs();
 
     // Listen to live generation progress events from WebSocket

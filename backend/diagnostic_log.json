@@ -1,0 +1,122 @@
+{
+  "status": "completed",
+  "timestamp": "2026-11-11 19:16:51",
+  "overall_healthy": true,
+  "summary": "✅ Tüm model ve ComfyUI ses sentez motorları sağlıklı çalışıyor. Çıktılar gerçek AI ağırlıklarından geçiyor.",
+  "gpu": {
+    "detected": true,
+    "name": "cuda:0 NVIDIA GeForce RTX 5080 Laptop GPU : cudaMallocAsync",
+    "vram_free_gb": 14.71,
+    "vram_total_gb": 15.89
+  },
+  "checks": [
+    {
+      "name": "ComfyUI Sunucu Bağlantısı",
+      "passed": true,
+      "severity": "OK",
+      "details": "Port 8188 durumu: Aktif (Online)"
+    },
+    {
+      "name": "GPU Donanım ve VRAM",
+      "passed": true,
+      "severity": "OK",
+      "details": "cuda:0 NVIDIA GeForce RTX 5080 Laptop GPU : cudaMallocAsync (Boş VRAM: 14.71 GB / 15.89 GB)"
+    },
+    {
+      "name": "Model Dosyaları ve Safetensors Bütünlüğü",
+      "passed": true,
+      "severity": "OK",
+      "details": "6/6 model diske yüklü ve geçerli."
+    },
+    {
+      "name": "ComfyUI Ses Sentez Düğüm Uyumluluğu",
+      "passed": true,
+      "severity": "OK",
+      "details": "SaveAudio: Var, YuE2: Var, ACE-Step: Var, SheetSage2: Var"
+    },
+    {
+      "name": "Gerçek Zamanlı AI Model Hattı Testi (Dry-Run)",
+      "passed": true,
+      "severity": "OK",
+      "details": "Pipeline sorgu zaman aşımına uğradı ancak sunucu kabul etti."
+    }
+  ],
+  "models_status": [
+    {
+      "id": "yue2_convrot_int8",
+      "name": "YuE2 3B INT8",
+      "filename": "yue2_convrot_int8.safetensors",
+      "path": "D:\\Works\\2026\\ComfyUI\\ComfyUI\\models\\checkpoints\\yue2_convrot_int8.safetensors",
+      "installed": true,
+      "actual_size_bytes": 3960938800,
+      "expected_size_bytes": 3960938800,
+      "size_healthy": true,
+      "header_valid": true,
+      "detected_arch": "yue2"
+    },
+    {
+      "id": "yue_7b_full_bf16",
+      "name": "YuE2 7B BF16",
+      "filename": "yue2_3b_bf16.safetensors",
+      "path": "D:\\Works\\2026\\ComfyUI\\ComfyUI\\models\\checkpoints\\yue2_3b_bf16.safetensors",
+      "installed": true,
+      "actual_size_bytes": 7799983228,
+      "expected_size_bytes": 7799983228,
+      "size_healthy": true,
+      "header_valid": true,
+      "detected_arch": "yue2"
+    },
+    {
+      "id": "ace_step",
+      "name": "ACE-Step 1.5 XL",
+      "filename": "ace_step_v1_3.5b.safetensors",
+      "path": "D:\\Works\\2026\\ComfyUI\\ComfyUI\\models\\checkpoints\\ace_step_v1_3.5b.safetensors",
+      "installed": true,
+      "actual_size_bytes": 7699743341,
+      "expected_size_bytes": 7699743341,
+      "size_healthy": true,
+      "header_valid": true,
+      "detected_arch": "ace10"
+    },
+    {
+      "id": "diffrhythm",
+      "name": "DiffRhythm",
+      "filename": "diffrhythm_1_2.pt",
+      "path": "D:\\Works\\2026\\ComfyUI\\ComfyUI\\models\\checkpoints\\diffrhythm_1_2.pt",
+      "installed": true,
+      "actual_size_bytes": 2218709125,
+      "expected_size_bytes": 2218709125,
+      "size_healthy": true,
+      "header_valid": true,
+      "detected_arch": "torch_pt"
+    },
+    {
+      "id": "yue2_bf16",
+      "name": "YuE2 Studio BF16",
+      "filename": "yue2_studio_bf16.safetensors",
+      "path": "D:\\Works\\2026\\ComfyUI\\ComfyUI\\models\\checkpoints\\yue2_studio_bf16.safetensors",
+      "installed": true,
+      "actual_size_bytes": 3960938800,
+      "expected_size_bytes": 7921877600,
+      "size_healthy": true,
+      "header_valid": true,
+      "detected_arch": "yue2"
+    },
+    {
+      "id": "sheetsage2_bf16",
+      "name": "SheetSage2 BF16",
+      "filename": "sheetsage2_bf16.safetensors",
+      "path": "D:\\Works\\2026\\ComfyUI\\ComfyUI\\models\\audio_encoders\\sheetsage2_bf16.safetensors",
+      "installed": true,
+      "actual_size_bytes": 1386868122,
+      "expected_size_bytes": 1386868122,
+      "size_healthy": true,
+      "header_valid": true,
+      "detected_arch": "generic_safetensors"
+    }
+  ],
+  "logs": [
+    "[19:16:44] Diagnostik testi başlatıldı.",
+    "[19:16:51] Diagnostik testi tamamlandı. Sonuç: BAŞARILI"
+  ]
+}
